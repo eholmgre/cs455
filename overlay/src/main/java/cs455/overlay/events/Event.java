@@ -1,4 +1,4 @@
-package cs455.overlay.wireformats;
+package cs455.overlay.events;
 
 public interface Event {
     MessageTypes getType();

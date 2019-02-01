@@ -1,6 +1,6 @@
 package cs455.overlay.node;
 
-import cs455.overlay.wireformats.Event;
+import cs455.overlay.events.Event;
 
 public class MessagingNode implements Node{
     @Override

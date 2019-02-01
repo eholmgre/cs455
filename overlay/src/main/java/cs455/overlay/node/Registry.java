@@ -1,7 +1,7 @@
 package cs455.overlay.node;
 
 import cs455.overlay.util.ServerSocketFactory;
-import cs455.overlay.wireformats.Event;
+import cs455.overlay.events.Event;
 
 import java.net.Socket;
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package cs455.overlay.wireformats;
+package cs455.overlay.events;
 
 public class EventFactory {
     private static EventFactory ourInstance = new EventFactory();
