@@ -1,9 +1,10 @@
 package cs455.overlay.node;
 
-import cs455.overlay.util.ServerSocketFactory;
+import cs455.overlay.transport.ConnectionManager;
+import cs455.overlay.transport.TCPServerThread;
 import cs455.overlay.events.Event;
 
-import java.net.Socket;
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class Registry implements Node {
@@ -11,19 +12,42 @@ public class Registry implements Node {
     protected class MessagingNodeHandle {
         String host;
         int port;
-        Socket socket;
         ArrayList<MessagingNodeHandle> connections;
     }
 
-    protected class RegistryHelper implements Runnable {
+    protected class RegistryHelperThread implements Runnable {
+
+        private synchronized Registry.RegistryState getState() {
+            return registryState;
+        }
         @Override
         public void run() {
+            while (getState() == RegistryState.REGISTRATION) {
+
+            }
 
         }
     }
 
-    ArrayList<MessagingNodeHandle> messagingNodes;
-    ServerSocketFactory serverSocketFactory;
+    private enum RegistryState {
+        REGISTRATION, CREATE_OVERLAY, TASK_STARTED, PULL_TRAFFIC, PRINT_STATS
+    }
+
+    private RegistryState registryState;
+
+    private ArrayList<MessagingNodeHandle> messagingNodes;
+
+    private TCPServerThread tcpServerThread;
+
+    private RegistryHelperThread registryHelper;
+
+    private ConnectionManager connectionManager;
+
+    public Registry() {
+        registryState = RegistryState.REGISTRATION;
+        messagingNodes = new ArrayList<>();
+
+    }
 
     @Override
     public void onEvent(Event event) {
@@ -44,10 +68,10 @@ public class Registry implements Node {
         }
 
         try {
-            registry.serverSocketFactory = new ServerSocketFactory(Integer.parseInt(args[0]));
-        } catch (IllegalArgumentException e) {
-            // IllegalArgumentException catches parseInt and ServerSocketFactory exceptions
-            System.out.println("Invalid port " + args[0]);
+            TCPServerThread tcpServerThread = new TCPServerThread(Integer.parseInt(args[0]),
+                    registry.connectionManager);
+        } catch (IOException | IllegalArgumentException e) {
+            System.out.println("Error starting TCP listener on port " + args[0]);
         }
 
     }
