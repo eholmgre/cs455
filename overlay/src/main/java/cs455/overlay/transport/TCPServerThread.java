@@ -8,18 +8,18 @@ import java.net.Socket;
 
 public class TCPServerThread implements Runnable{
 
-    ServerSocket serverSocket;
+    private ServerSocket serverSocket;
 
-    private /* volitile */ boolean isStoped;
+    private /* volatile */ boolean isStopped;
 
     private ConnectionManager connectionManager;
 
     private synchronized boolean beenStoped() {
-        return isStoped;
+        return isStopped;
     }
 
     public synchronized void stop() {
-        this.isStoped = true;
+        this.isStopped = true;
     }
 
     public TCPServerThread(int port, ConnectionManager connectionManager) throws IOException {

@@ -2,6 +2,7 @@ package cs455.overlay.transport;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.security.KeyException;
@@ -10,14 +11,14 @@ import java.util.Iterator;
 
 public class ConnectionManager {
     private class Connection {
-        public String identifier;
-        public InetAddress address;
-        public int port;
-        public Socket socket;
-        public DataInputStream in;
-        public DataOutputStream out;
-        public TCPReceiverThread receiver;
-        public Thread receiverThread;
+        protected String identifier;
+        protected InetAddress address;
+        protected int port;
+        protected Socket socket;
+        protected DataInputStream in;
+        protected DataOutputStream out;
+        protected TCPReceiverThread receiver;
+        protected Thread receiverThread;
     }
 
     private ArrayList<Connection> connections;
@@ -28,25 +29,34 @@ public class ConnectionManager {
     }
 
     public void newConnection(Socket socket, TCPReceiverThread receiver, Thread thread)
-    throws Exception{
-        synchronized (this) {
-            Connection connection = new Connection();
-            connection.identifier = socket.getInetAddress().toString() + ':' + socket.getLocalPort();
-            connection.address = socket.getInetAddress();
-            connection.port = socket.getPort();
-            connection.socket = socket;
-            connection.in = new DataInputStream(socket.getInputStream());
-            connection.out = new DataOutputStream(socket.getOutputStream());
-            connection.receiver = receiver;
-            connection.receiverThread = thread;
+            throws IOException {
+        Connection connection = new Connection();
+        connection.identifier = socket.getInetAddress().toString() + ':' + socket.getLocalPort();
+        connection.address = socket.getInetAddress();
+        connection.port = socket.getPort();
+        connection.socket = socket;
+        connection.in = new DataInputStream(socket.getInputStream());
+        connection.out = new DataOutputStream(socket.getOutputStream());
+        connection.receiver = receiver;
+        connection.receiverThread = thread;
 
+        synchronized (this) {
             connections.add(connection);
         }
     }
 
-    public void closeConnection(String id) throws KeyException, Exception {
+    public ArrayList<String> getConnectionList() {
+        ArrayList<String> clist = new ArrayList<>();
+        for (Connection c : connections) {
+            clist.add(c.identifier);
+        }
+
+        return clist;
+    }
+
+    public void closeConnection(String id) throws KeyException, IOException, InterruptedException {
         synchronized (this) {
-            for (Iterator<Connection> i = connections.iterator(); i.hasNext();) {
+            for (Iterator<Connection> i = connections.iterator(); i.hasNext(); ) {
                 Connection c = i.next();
                 if (c.identifier.equals(id)) {
                     c.receiver.stop();

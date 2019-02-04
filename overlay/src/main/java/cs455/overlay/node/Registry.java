@@ -54,18 +54,18 @@ public class Registry implements Node {
 
     }
 
-    private void printUsage() {
+    private static void printUsage() {
         System.out.println("Usage: registry <tcp port>");
     }
 
     public static void main(String[] args) {
 
-        Registry registry = new Registry();
-
         if (args.length != 1) {
-            registry.printUsage();
+            Registry.printUsage();
             System.exit(1);
         }
+
+        Registry registry = new Registry();
 
         try {
             TCPServerThread tcpServerThread = new TCPServerThread(Integer.parseInt(args[0]),

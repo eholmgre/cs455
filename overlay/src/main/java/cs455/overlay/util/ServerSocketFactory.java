@@ -42,6 +42,7 @@ public class ServerSocketFactory {
             try {
                 ServerSocket testSocket; // can this be outside the loop? is that safe? TODO: lets find out
                 testSocket = new ServerSocket(port);
+                assignedPort = port;
                 return testSocket;
             } catch (IOException e) {
                 continue; //unnecessary but for clarity
@@ -49,6 +50,14 @@ public class ServerSocketFactory {
         }
 
         throw new IOException("No available ports on machine.");
+    }
+
+    public int getPort() throws RuntimeException{
+        if (assignedPort > 0) {
+            return assignedPort;
+        }
+
+        throw new RuntimeException("Port has not been selected yet.");
     }
 
 }
