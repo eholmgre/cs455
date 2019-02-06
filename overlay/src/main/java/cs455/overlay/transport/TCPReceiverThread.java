@@ -1,7 +1,5 @@
 package cs455.overlay.transport;
 
-import cs455.overlay.node.Node;
-
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
@@ -11,8 +9,6 @@ public class TCPReceiverThread implements Runnable{
     private Socket socket;
     private DataInputStream din;
     private ConnectionManager connectionManager;
-
-    private Node parent;
 
     private /* volatile */ boolean isStopped;
 
@@ -24,11 +20,10 @@ public class TCPReceiverThread implements Runnable{
         this.isStopped = true;
     }
 
-    public TCPReceiverThread(Socket socket, Node parent) throws IOException {
+    public TCPReceiverThread(Socket socket) throws IOException {
         this.socket = socket;
         din = new DataInputStream(socket.getInputStream());
         isStopped = false;
-        this.parent = parent;
     }
 
     @Override
