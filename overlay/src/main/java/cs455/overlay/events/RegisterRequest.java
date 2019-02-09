@@ -18,6 +18,14 @@ public class RegisterRequest implements Event {
         this.port = port;
     }
 
+    public String getIp() {
+        return ip;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
     @Override
     public MessageTypes getType() {
         return MessageTypes.REGISTER_REQUEST;
@@ -32,9 +40,9 @@ public class RegisterRequest implements Event {
 
         dOutStream.writeInt(MessageTypes.REGISTER_REQUEST.getTypeCode());
 
-        byte[] ipBytes = ip.getBytes();
-        dOutStream.writeInt(ipBytes.length);
-        dOutStream.write(ipBytes);
+        byte[] ipBytes = ip.getBytes(); // create byte array for IP string
+        dOutStream.writeInt(ipBytes.length);    // write length of IP string
+        dOutStream.write(ipBytes);  // write IP string
 
         dOutStream.writeInt(port);
 
