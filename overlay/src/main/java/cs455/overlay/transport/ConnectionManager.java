@@ -1,13 +1,16 @@
 package cs455.overlay.transport;
 
+import cs455.overlay.events.Event;
+import cs455.overlay.events.EventFactory;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.security.KeyException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 public class ConnectionManager {
     private class Connection {
@@ -21,6 +24,7 @@ public class ConnectionManager {
         protected Thread receiverThread;
     }
 
+
     private ArrayList<Connection> connections;
 
 
@@ -28,7 +32,7 @@ public class ConnectionManager {
         connections = new ArrayList<>();
     }
 
-    public void newConnection(Socket socket, TCPReceiverThread receiver, Thread thread)
+    public String newConnection(Socket socket, TCPReceiverThread receiver, Thread thread)
             throws IOException {
         Connection connection = new Connection();
         connection.identifier = socket.getInetAddress().toString() + ':' + socket.getLocalPort();
@@ -43,6 +47,21 @@ public class ConnectionManager {
         synchronized (this) {
             connections.add(connection);
         }
+
+        return connection.identifier;
+    }
+
+    public void sendMessage(String connectionID, Event message) throws IOException {
+        for (Connection c : connections) {
+            if (c.identifier.equals(connectionID)) {
+                byte []bytes = message.getBytes();
+                c.out.write(bytes.length);
+                c.out.write(message.getBytes());
+                c.out.flush();
+                return;
+            }
+        }
+        throw new NoSuchElementException("Error: no connection " + connectionID);
     }
 
     public ArrayList<String> getConnectionList() {
@@ -54,7 +73,8 @@ public class ConnectionManager {
         return clist;
     }
 
-    public void closeConnection(String id) throws KeyException, IOException, InterruptedException {
+    // TODO: KeyException is inappropriate
+    public void closeConnection(String id) throws IOException, InterruptedException {
         synchronized (this) {
             for (Iterator<Connection> i = connections.iterator(); i.hasNext(); ) {
                 Connection c = i.next();
@@ -69,7 +89,7 @@ public class ConnectionManager {
                     return;
                 }
             }
-            throw new KeyException("Error: no connection " + id);
+            throw new NoSuchElementException("Error: no connection " + id);
         }
     }
 }
