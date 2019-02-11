@@ -8,16 +8,18 @@ import cs455.overlay.transport.TCPReceiverThread;
 import cs455.overlay.util.ServerSocketFactory;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 
-// TODO: should this be a singleton?
 public class MessagingNode implements Node{
 
     private enum NodeState {
         REGISTERING, REGISTERED, DEREGISTERING, CONNECTING, ROUTING, WORKING, TASK_COMPLETE, SENDING_SUMMARY;
     }
+
+    private String[] progArgs;
 
     private String registryAddress;
     private int registryPort;
@@ -39,15 +41,16 @@ public class MessagingNode implements Node{
     private EventFactory messageFactory;
 
 
-    public MessagingNode(String address, int port) {
-        this.registryAddress = address;
-        this.registryPort = port;
+    //public MessagingNode(String address, int port) {
+    public MessagingNode(String []args) {
+        progArgs = args;
         state = NodeState.REGISTERING;
         connections = new ConnectionManager();
         messageFactory = EventFactory.getInstance();
+        getServerSocket = new ServerSocketFactory();
     }
 
-    private static void printHelp() {
+    private void printHelp() {
         System.out.println("Usage: messageNode <registry address> <registry port>");
     }
 
@@ -79,8 +82,9 @@ public class MessagingNode implements Node{
         helperThread.start();
     }
 
-    private void stopHelper() {
+    private void stopHelper() throws InterruptedException{
         helper.stop();
+        helperThread.join();
     }
 
     private String createConnection(String address, int port) throws IOException {
@@ -91,51 +95,63 @@ public class MessagingNode implements Node{
         return connections.newConnection(soc, receiver, receiverThread);
     }
 
-    // wow this is a pointless method
-    private void sendMessage(String connectionID, Event message) throws IOException{
-        connections.sendMessage(connectionID, message);
-    }
-
     @Override
     public void onEvent(Event event) {
 
     }
 
-    public static void main(String[] args) {
-        if (args.length != 2) {
-            MessagingNode.printHelp();
+    public void startMessageNode() {
+
+        if (progArgs.length != 2) {
+            printHelp();
             System.exit(1);
         }
 
 
-        MessagingNode node = new MessagingNode(args[0], Integer.parseInt(args[1]));
-
         try {
-            node.registryID = node.createConnection(node.registryAddress, node.registryPort);
+            registryAddress = progArgs[0];
+            registryPort = Integer.parseInt(progArgs[1]);
+
+            registryID = createConnection(registryAddress, registryPort);
         } catch (IOException e) {
-            System.out.println("Error: could not connect to registry on " + node.registryAddress + ":" + node.registryPort);
+            System.out.println("Error: could not connect to registry on " + registryAddress + ":" + registryPort);
             System.out.println(e.getMessage());
+            return;
         }
 
 
         try {
-            node.serverSocket = node.getServerSocket.makeServerSocket();
-            node.myPort = node.getServerSocket.getPort();
-            node.myIP = node.serverSocket.getInetAddress().toString(); // aww hell what does this even do?
+            serverSocket = getServerSocket.makeServerSocket();
+            myPort = getServerSocket.getPort();
+            myIP = InetAddress.getLocalHost().getHostAddress();
 
+            System.out.println("Messaging node running on " + myIP + ":" + myPort);
 
-            node.connections.sendMessage(node.registryID, new RegisterRequest(node.myIP, node.registryPort));
+            connections.sendMessage(registryID, new RegisterRequest(myIP, registryPort));
         } catch (IOException e) {
             System.out.println(e.getMessage());
+            return;
         }
 
-        node.startHelper();
+        startHelper();
 
 
 
 
-        node.stopHelper();
+        try {
+            stopHelper();
+        } catch (InterruptedException e) {
+            System.out.println("Error: interrupted while stopping helper thread");
+            System.out.println(e.getMessage());
+            return;
+        }
 
 
+
+    }
+
+    public static void main(String[] args) {
+        MessagingNode node = new MessagingNode(args);
+        node.startMessageNode();
     }
 }

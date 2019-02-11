@@ -2,6 +2,8 @@ import cs455.overlay.events.Event;
 import cs455.overlay.events.EventFactory;
 import cs455.overlay.events.MessageTypes;
 import cs455.overlay.events.RegisterRequest;
+import cs455.overlay.node.MessagingNode;
+import cs455.overlay.node.Registry;
 import org.junit.*;
 
 import java.io.IOException;
@@ -11,6 +13,15 @@ import static org.junit.Assert.fail;
 
 
 public class Tests {
+
+    @Test
+    public void testRegistration() {
+        MessagingNode node = new MessagingNode(new String[] {"localhost", "6666"});
+        Registry registry = new Registry(new String[] {"6666"});
+
+        registry.startRegistry();
+        node.startMessageNode();
+    }
 
     @Test
     public void testRegisterRequest() {

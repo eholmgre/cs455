@@ -37,7 +37,7 @@ public class TCPServerThread implements Runnable{
                 Thread receiverThread = new Thread(receiver);
                 connectionManager.newConnection(clientSocket, receiver, receiverThread);
             } catch (Exception e) {
-                System.out.println("TCP server thread failed.\n" + e.getMessage());
+                System.out.println("Error: TCP server thread failed.\n" + e.getMessage());
                 break;
             }
 

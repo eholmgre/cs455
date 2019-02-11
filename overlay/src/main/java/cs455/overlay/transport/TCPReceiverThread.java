@@ -6,6 +6,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
 
+// will running event processing operations in this thread cause lost performance/ packets ?
 public class TCPReceiverThread implements Runnable{
 
     private Socket socket;
