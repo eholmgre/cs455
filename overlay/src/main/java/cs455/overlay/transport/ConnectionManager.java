@@ -1,7 +1,6 @@
 package cs455.overlay.transport;
 
 import cs455.overlay.events.Event;
-import cs455.overlay.events.EventFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -44,7 +43,7 @@ public class ConnectionManager {
         connection.receiver = receiver;
         connection.receiverThread = thread;
 
-        synchronized (this) {
+        synchronized (this) { // todo: does this really need to be synchronized?
             connections.add(connection);
         }
 
@@ -80,7 +79,9 @@ public class ConnectionManager {
                 Connection c = i.next();
                 if (c.identifier.equals(id)) {
                     c.receiver.stop();
+                    System.out.println("Attempting to stop received thread for " + c.identifier);
                     c.receiverThread.join();
+                    System.out.println("Joined received thread for " + c.identifier);
                     c.out.close();
                     c.in.close();
                     c.socket.close();

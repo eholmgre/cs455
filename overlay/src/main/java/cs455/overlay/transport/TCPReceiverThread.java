@@ -13,6 +13,8 @@ public class TCPReceiverThread implements Runnable{
     private DataInputStream din;
     private EventFactory messageFactory;
 
+    private String origin;
+
     private volatile boolean isStopped; //TODO: see if we can't stop on socket close
 
     private synchronized boolean beenStopped() {
@@ -28,26 +30,31 @@ public class TCPReceiverThread implements Runnable{
         din = new DataInputStream(socket.getInputStream());
         isStopped = false;
         messageFactory = EventFactory.getInstance();
+        origin = socket.getInetAddress().getHostAddress();
     }
 
     @Override
     public void run() {
 
+        System.out.println("TCP receiver thread starting for " + origin);
+
         int dataLength;
-        while (! beenStopped()) {
+        while (socket != null && ! socket.isClosed()) { // todo: probably can simplify
             try {
                 dataLength = din.readInt();
 
                 byte[] data = new byte[dataLength];
                 din.readFully(data, 0, dataLength);
 
-                messageFactory.createEvent(data);
+                messageFactory.createEvent(data, origin);
 
             } catch (IOException e) { // includes SocketException
                 System.err.println(e.getMessage());
                 break;
             }
         }
+
+        System.out.println("TCP receiver thread stopping for " + origin);
 
     }
 }

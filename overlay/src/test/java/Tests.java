@@ -28,11 +28,11 @@ public class Tests {
         try {
             EventFactory messageFactory = EventFactory.getInstance();
 
-            Event registerRequest = new RegisterRequest("test", -1);
+            Event registerRequest = new RegisterRequest("test", -1, "localhost");
 
             byte []marshaledBytes = registerRequest.getBytes();
 
-            Event unmarshaledEvent = messageFactory.createEvent(marshaledBytes);
+            Event unmarshaledEvent = messageFactory.createEvent(marshaledBytes, "localhost");
 
             assertTrue(unmarshaledEvent.getType().equals(MessageTypes.REGISTER_REQUEST));
 

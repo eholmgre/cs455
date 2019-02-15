@@ -1,18 +1,65 @@
 package cs455.overlay.transport;
 
-import cs455.overlay.util.ServerSocketFactory;
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class TCPServerThread implements Runnable{
 
+    private class ServerSocketFactory {
+
+        private int assignedPort;
+
+        public ServerSocketFactory() {
+            assignedPort = -1;
+        }
+
+        public ServerSocketFactory(int assignedPort) throws IllegalArgumentException {
+            if (assignedPort < 1 || assignedPort > 65535) {
+                throw new IllegalArgumentException("Invalid port number");
+            }
+            this.assignedPort = assignedPort;
+        }
+
+        /*
+        Adapted from https://stackoverflow.com/questions/2675362
+         */
+        public ServerSocket makeServerSocket() throws IOException {
+            if (assignedPort > 0) {
+                return new ServerSocket(assignedPort);
+            }
+
+            for (int port = 1024; port < 65535; ++port) {
+                try {
+                    ServerSocket testSocket; // can this be outside the loop? is that safe? TODO: lets find out
+                    testSocket = new ServerSocket(port);
+                    assignedPort = port;
+                    return testSocket;
+                } catch (IOException e) {
+                    continue; //unnecessary but for clarity
+                }
+            }
+
+            throw new IOException("No available ports on machine.");
+        }
+
+        public int getPort() throws RuntimeException{
+            if (assignedPort > 0) {
+                return assignedPort;
+            }
+
+            throw new RuntimeException("Port has not been selected yet.");
+        }
+
+    }
+
     private ServerSocket serverSocket;
 
     private /* volatile */ boolean isStopped;
 
-    private ConnectionManager connectionManager;
+    private ConnectionManager connections;
+
+    private int port;
 
     private synchronized boolean beenStoped() {
         return isStopped;
@@ -23,10 +70,23 @@ public class TCPServerThread implements Runnable{
     }
 
     public TCPServerThread(int port, ConnectionManager connectionManager) throws IOException {
-        this.connectionManager = connectionManager;
+        this.connections = connectionManager;
         ServerSocketFactory ssf = new ServerSocketFactory(port);
         serverSocket = ssf.makeServerSocket();
+        port = ssf.getPort();
     }
+
+    public TCPServerThread(ConnectionManager connectionManager) throws IOException {
+        this.connections = connectionManager;
+        ServerSocketFactory ssf = new ServerSocketFactory();
+        serverSocket = ssf.makeServerSocket();
+        port = ssf.getPort();
+    }
+
+    public int getPort() {
+        return port;
+    }
+
     @Override
     public void run() {
         while (! beenStoped()) {
@@ -35,7 +95,9 @@ public class TCPServerThread implements Runnable{
                 clientSocket = serverSocket.accept();
                 TCPReceiverThread receiver = new TCPReceiverThread(clientSocket);
                 Thread receiverThread = new Thread(receiver);
-                connectionManager.newConnection(clientSocket, receiver, receiverThread);
+                receiverThread.start();
+                connections.newConnection(clientSocket, receiver, receiverThread);
+                System.out.println("New connection: " + clientSocket.getInetAddress());
             } catch (Exception e) {
                 System.out.println("Error: TCP server thread failed.\n" + e.getMessage());
                 break;

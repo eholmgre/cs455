@@ -1,53 +1,54 @@
 package cs455.overlay.node;
 
 import cs455.overlay.events.Event;
-import cs455.overlay.events.EventFactory;
 import cs455.overlay.events.RegisterRequest;
+import cs455.overlay.events.RegisterResponse;
 import cs455.overlay.transport.ConnectionManager;
 import cs455.overlay.transport.TCPReceiverThread;
-import cs455.overlay.util.ServerSocketFactory;
+import cs455.overlay.transport.TCPServerThread;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 public class MessagingNode implements Node{
 
     private enum NodeState {
-        REGISTERING, REGISTERED, DEREGISTERING, CONNECTING, ROUTING, WORKING, TASK_COMPLETE, SENDING_SUMMARY;
+        REGISTERING, REGISTERED, DEREGISTERING, CONNECTING, ROUTING, WORKING, TASK_COMPLETE, SENDING_SUMMARY, EXITING;
     }
 
     private String[] progArgs;
 
-    private String registryAddress;
-    private int registryPort;
-    private String registryID;
-    private MessagingNodeHelper helper;
-    private Thread helperThread;
-
     private String myIP;
     private int myPort;
 
-    private ServerSocket serverSocket;
+    private String registryAddress;
+    private int registryPort;
+    private String registryID;
 
-    private NodeState state;
+    private MessagingNodeHelper helper;
+    private Thread helperThread;
+
+    private TCPServerThread tcpServer;
+    private Thread serverThread;
+
+    private NodeState nodeState;
 
     private ConnectionManager connections;
 
-    private ServerSocketFactory getServerSocket;
-
-    private EventFactory messageFactory;
+    private ConcurrentLinkedQueue<Event> eventQueue;
 
 
     //public MessagingNode(String address, int port) {
     public MessagingNode(String []args) {
         progArgs = args;
-        state = NodeState.REGISTERING;
+        nodeState = NodeState.REGISTERING;
         connections = new ConnectionManager();
-        messageFactory = EventFactory.getInstance();
-        getServerSocket = new ServerSocketFactory();
+        eventQueue = new ConcurrentLinkedQueue<>();
     }
 
     private void printHelp() {
@@ -58,9 +59,13 @@ public class MessagingNode implements Node{
 
         private volatile boolean stopped;
 
+        /*
+        Might need this if we need to synchronize access to stop flag.
+
         private synchronized boolean beenStopped() {
             return stopped;
         }
+        */
 
         public synchronized void stop() {
             stopped = true;
@@ -69,22 +74,26 @@ public class MessagingNode implements Node{
         @Override
         public void run() {
 
-            while (! beenStopped()) {
+            while (! stopped) {
+                //try {
+                    if (! eventQueue.isEmpty()) {
+                        Event e = eventQueue.poll();
 
+                        switch (e.getType()) {
+                            case REGISTER_RESPONSE:
+                                handleRegisterResponse((RegisterResponse) e);
+                                break;
+                        }
+                    }
+                //} catch (Exception e) {
+                //    System.out.println("Error in helper thread: " + e.getMessage());
+                //}
+
+                if (nodeState == NodeState.EXITING) {
+                    return;
+                }
             }
-
         }
-    }
-
-    private void startHelper() {
-        helper = new MessagingNodeHelper();
-        helperThread = new Thread(helper);
-        helperThread.start();
-    }
-
-    private void stopHelper() throws InterruptedException{
-        helper.stop();
-        helperThread.join();
     }
 
     private String createConnection(String address, int port) throws IOException {
@@ -97,6 +106,25 @@ public class MessagingNode implements Node{
 
     @Override
     public void onEvent(Event event) {
+        eventQueue.add(event);
+
+    }
+
+    private void handleRegisterResponse(RegisterResponse response) {
+        if (response.getSuccess()) {
+            System.out.println("Successfully registered to registry at " + response.getOrigin() + ". "
+                    + response.getRegisterCount() + " other nodes registered at this time.");
+
+            //TODO: maybe synchronize?
+
+            this.nodeState = NodeState.REGISTERED;
+
+        } else {
+            System.out.println("Registeration was not successful with registry at " + response.getOrigin()
+                    + ". Reason: " + response.getInfo());
+
+            this.nodeState = NodeState.EXITING;
+        }
 
     }
 
@@ -106,6 +134,9 @@ public class MessagingNode implements Node{
             printHelp();
             System.exit(1);
         }
+
+
+        nodeState = NodeState.REGISTERING;
 
 
         try {
@@ -121,25 +152,56 @@ public class MessagingNode implements Node{
 
 
         try {
-            serverSocket = getServerSocket.makeServerSocket();
-            myPort = getServerSocket.getPort();
+            tcpServer = new TCPServerThread(connections);
+            myPort = tcpServer.getPort();
             myIP = InetAddress.getLocalHost().getHostAddress();
+
 
             System.out.println("Messaging node running on " + myIP + ":" + myPort);
 
-            connections.sendMessage(registryID, new RegisterRequest(myIP, registryPort));
+            System.out.println("Attempting to register with registry at " + registryAddress + ":" + registryPort);
+
+            connections.sendMessage(registryID, new RegisterRequest(registryAddress, registryPort, "localhost"));
+
         } catch (IOException e) {
             System.out.println(e.getMessage());
             return;
         }
 
-        startHelper();
+        serverThread = new Thread(tcpServer);
+        serverThread.start();
+
+        helper = new MessagingNodeHelper();
+        helperThread = new Thread(helper);
+        helperThread.start();
+
+        /* Command loop */
+
+        BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+        while (nodeState != NodeState.EXITING) {
+            try {
+
+                String command = input.readLine();
+
+                if (command.toLowerCase().equals("exit")) {
+                    nodeState = NodeState.EXITING;
+                    break;
+                }
+            } catch (IOException e) {
+                System.out.println("Error: IOException while reading user input");
+                System.out.println(e.getMessage());
+                break;
+            }
+        }
 
 
+        tcpServer.stop();
+        helper.stop();
 
 
         try {
-            stopHelper();
+            serverThread.join();
+            helperThread.join();
         } catch (InterruptedException e) {
             System.out.println("Error: interrupted while stopping helper thread");
             System.out.println(e.getMessage());
