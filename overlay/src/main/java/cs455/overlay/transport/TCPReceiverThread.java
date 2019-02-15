@@ -46,10 +46,13 @@ public class TCPReceiverThread implements Runnable{
                 byte[] data = new byte[dataLength];
                 din.readFully(data, 0, dataLength);
 
+                System.out.println("TCP receiver read " + dataLength + " bytes.");
+
+                //TODO: WE'RE NOT DOING ANYTHING WITH THE NEW MESSAGE AAAHHHHH
                 messageFactory.createEvent(data, origin);
 
             } catch (IOException e) { // includes SocketException
-                System.err.println(e.getMessage());
+                System.err.println("Error: exception in TCP thread for " + origin + ": " + e.getMessage());
                 break;
             }
         }

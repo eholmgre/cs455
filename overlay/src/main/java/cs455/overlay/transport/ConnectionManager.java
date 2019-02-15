@@ -2,7 +2,6 @@ package cs455.overlay.transport;
 
 import cs455.overlay.events.Event;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -17,8 +16,7 @@ public class ConnectionManager {
         protected InetAddress address;
         protected int port;
         protected Socket socket;
-        protected DataInputStream in;
-        protected DataOutputStream out;
+        protected TCPSender sender;
         protected TCPReceiverThread receiver;
         protected Thread receiverThread;
     }
@@ -38,8 +36,7 @@ public class ConnectionManager {
         connection.address = socket.getInetAddress();
         connection.port = socket.getPort();
         connection.socket = socket;
-        connection.in = new DataInputStream(socket.getInputStream());
-        connection.out = new DataOutputStream(socket.getOutputStream());
+        connection.sender = new TCPSender(socket);
         connection.receiver = receiver;
         connection.receiverThread = thread;
 
@@ -54,9 +51,7 @@ public class ConnectionManager {
         for (Connection c : connections) {
             if (c.identifier.equals(connectionID)) {
                 byte []bytes = message.getBytes();
-                c.out.write(bytes.length);
-                c.out.write(message.getBytes());
-                c.out.flush();
+                c.sender.sendData(bytes);
                 return;
             }
         }
@@ -82,8 +77,6 @@ public class ConnectionManager {
                     System.out.println("Attempting to stop received thread for " + c.identifier);
                     c.receiverThread.join();
                     System.out.println("Joined received thread for " + c.identifier);
-                    c.out.close();
-                    c.in.close();
                     c.socket.close();
 
                     i.remove();

@@ -96,10 +96,12 @@ public class MessagingNode implements Node{
         }
     }
 
+    //TODO: shoudn't this just be fully deligated to connection manager?
     private String createConnection(String address, int port) throws IOException {
         Socket soc = new Socket(address, port);
         TCPReceiverThread receiver = new TCPReceiverThread(soc);
         Thread receiverThread = new Thread(receiver);
+        receiverThread.start();
 
         return connections.newConnection(soc, receiver, receiverThread);
     }

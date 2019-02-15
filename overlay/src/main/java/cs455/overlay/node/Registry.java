@@ -52,6 +52,7 @@ public class Registry implements Node {
 
         @Override
         public void run() {
+            System.out.println("Registry helper thread starting.");
             while (!beenStopped()) {
                 try {
                     if (! eventQueue.isEmpty()) {
@@ -64,10 +65,11 @@ public class Registry implements Node {
                     }
                 } catch (Exception e) {
                     System.out.println("Error in registry helper thread: " + e.getMessage());
-                    return;
+                    break;
                 }
 
             }
+            System.out.println("Registry helper thread stopping.");
 
         }
     }

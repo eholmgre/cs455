@@ -4,7 +4,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
-public class TCPSender {
+public class TCPSender { //TODO: but what if the socket closes? how do we clean up?
 
     private Socket socket;
     private DataOutputStream dout;
@@ -15,6 +15,7 @@ public class TCPSender {
     }
 
     public void sendData(byte[] data) throws IOException {
+        System.out.println("Sending " + data.length + " bytes of data");
         int dataLength = data.length;
         dout.writeInt(dataLength);
         dout.write(data, 0, dataLength);

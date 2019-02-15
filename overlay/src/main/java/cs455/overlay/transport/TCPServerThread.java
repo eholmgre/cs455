@@ -73,7 +73,7 @@ public class TCPServerThread implements Runnable{
         this.connections = connectionManager;
         ServerSocketFactory ssf = new ServerSocketFactory(port);
         serverSocket = ssf.makeServerSocket();
-        port = ssf.getPort();
+        this.port = ssf.getPort();
     }
 
     public TCPServerThread(ConnectionManager connectionManager) throws IOException {
@@ -97,7 +97,7 @@ public class TCPServerThread implements Runnable{
                 Thread receiverThread = new Thread(receiver);
                 receiverThread.start();
                 connections.newConnection(clientSocket, receiver, receiverThread);
-                System.out.println("New connection: " + clientSocket.getInetAddress());
+                System.out.println("New connection: " + clientSocket.getInetAddress().getHostAddress());
             } catch (Exception e) {
                 System.out.println("Error: TCP server thread failed.\n" + e.getMessage());
                 break;
