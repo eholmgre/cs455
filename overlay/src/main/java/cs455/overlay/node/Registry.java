@@ -11,6 +11,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class Registry implements Node {
 
@@ -55,9 +56,7 @@ public class Registry implements Node {
             System.out.println("Registry helper thread starting.");
             while (!beenStopped()) {
                 try {
-                    // might just wanna use a blocking queue
-                    if (! eventQueue.isEmpty()) {
-                        Event e = eventQueue.poll();
+                        Event e = eventQueue.take();
 
                         switch (e.getType()) {
                             case REGISTER_REQUEST:
@@ -67,10 +66,11 @@ public class Registry implements Node {
                                 handleDeregisterRequest((DeregisterRequest) e);
                                 break;
                         }
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error in registry helper thread: " + e.getMessage());
-                    break; // maybe don't need to break?
+                } catch (InterruptedException e) {
+                    System.err.println("Helper thread interrupted" + e.getMessage());
+                    break;
+                } catch (IOException e) {
+                    System.err.println("Error: IOException in helper thread.");
                 }
 
             }
@@ -100,16 +100,22 @@ public class Registry implements Node {
 
     private ConnectionManager connectionManager;
 
-    private ConcurrentLinkedQueue<Event> eventQueue;
+    private LinkedBlockingQueue<Event> eventQueue;
 
     public Registry(String[] args) {
         progArgs = args;
         registryState = RegistryState.REGISTRATION;
         messagingNodes = new ArrayList<>();
         connectionManager = new ConnectionManager(this);
-        eventQueue = new ConcurrentLinkedQueue<>();
+        eventQueue = new LinkedBlockingQueue<>();
+    }
 
+    private synchronized RegistryState getState() {
+        return registryState;
+    }
 
+    private synchronized void setState(RegistryState state) {
+        registryState = state;
     }
 
     private void handleRegisterRequest(RegisterRequest e) throws IOException{
@@ -203,7 +209,7 @@ public class Registry implements Node {
 
     @Override
     public void onEvent(Event event) {
-        eventQueue.add(event);
+        eventQueue.offer(event);
 
     }
 
@@ -227,7 +233,7 @@ public class Registry implements Node {
 
         System.out.println("Registry starting at " + myIP + ":" + myPort);
 
-        registryState = RegistryState.REGISTRATION;
+        setState(RegistryState.REGISTRATION);
 
         try {
             tcpServer = new TCPServerThread(Integer.parseInt(progArgs[0]), connectionManager, this);
@@ -239,19 +245,20 @@ public class Registry implements Node {
         serverThread = new Thread(tcpServer);
         serverThread.start();
 
-        RegistryHelperThread registryHelper = new RegistryHelperThread();
-        Thread helperThread = new Thread(registryHelper);
+        helper = new RegistryHelperThread();
+        helperThread = new Thread(helper);
         helperThread.start();
 
         BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
 
-        while (registryState != RegistryState.EXITING) {
+        while (getState() != RegistryState.EXITING) {
             try {
 
                 String command = input.readLine();
 
                 if (command.toLowerCase().equals("exit")) {
-                    registryState = RegistryState.EXITING;
+                    setState(RegistryState.EXITING);
+                    helperThread.interrupt();
                     break;
                 }
             } catch (IOException e) {
@@ -264,7 +271,7 @@ public class Registry implements Node {
 
         try {
             tcpServer.stop();
-            registryHelper.stop();
+            helper.stop();
 
             serverThread.join();
             helperThread.join();

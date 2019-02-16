@@ -8,7 +8,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class MessagingNode implements Node {
@@ -36,7 +36,8 @@ public class MessagingNode implements Node {
 
     private ConnectionManager connections;
 
-    private ConcurrentLinkedQueue<Event> eventQueue;
+    //private ConcurrentLinkedQueue<Event> eventQueue;
+    private LinkedBlockingQueue<Event> eventQueue;
 
 
     //public MessagingNode(String address, int port) {
@@ -44,7 +45,15 @@ public class MessagingNode implements Node {
         progArgs = args;
         nodeState = NodeState.REGISTERING;
         connections = new ConnectionManager(this);
-        eventQueue = new ConcurrentLinkedQueue<>();
+        eventQueue = new LinkedBlockingQueue<>();
+    }
+
+    private synchronized NodeState getState() {
+        return nodeState;
+    }
+
+    private synchronized void setState(NodeState state) {
+        nodeState = state;
     }
 
     private void printHelp() {
@@ -53,29 +62,15 @@ public class MessagingNode implements Node {
 
     private class MessagingNodeHelper implements Runnable {
 
-        private volatile boolean stopped;
-
-        /*
-        Might need this if we need to synchronize access to stop flag.
-
-        private synchronized boolean beenStopped() {
-            return stopped;
-        }
-        */
-
-        public synchronized void stop() {
-            stopped = true;
-        }
-
         @Override
         public void run() {
 
             System.out.println("Message node helper thread starting");
 
-            while (!stopped) {
-                //try {
-                if (!eventQueue.isEmpty()) {
-                    Event e = eventQueue.poll();
+            while (getState() != NodeState.EXITING) {
+                try {
+
+                    Event e = eventQueue.take();
 
                     switch (e.getType()) {
                         case REGISTER_RESPONSE:
@@ -86,12 +81,8 @@ public class MessagingNode implements Node {
                             break;
 
                     }
-                }
-                //} catch (Exception e) {
-                //    System.out.println("Error in helper thread: " + e.getMessage());
-                //}
-
-                if (nodeState == NodeState.EXITING) {
+                } catch (InterruptedException e) {
+                    System.err.println("Helper thread interrupted");
                     break;
                 }
             }
@@ -102,13 +93,13 @@ public class MessagingNode implements Node {
 
     @Override
     public void onEvent(Event event) {
-        eventQueue.add(event);
+        eventQueue.offer(event);
     }
 
     private void handleDeregisterResponse(DeregisterResponse response) {
         System.out.println("Deregistration from registry " + (response.getSuccess() ? "successful" : "failed") + ". ("
-        + response.getInfo() + "). " + response.getNumberRegistered() + " nodes currently registered on registry.");
-        nodeState = NodeState.EXITING;
+                + response.getInfo() + "). " + response.getNumberRegistered() + " nodes currently registered on registry.");
+        setState(NodeState.EXITING);
     }
 
     private void handleRegisterResponse(RegisterResponse response) {
@@ -117,13 +108,13 @@ public class MessagingNode implements Node {
                     + response.getRegisterCount() + " other nodes registered at this time.");
 
             //TODO: maybe synchronize?
-            this.nodeState = NodeState.REGISTERED;
+            setState(NodeState.REGISTERED);
 
         } else {
             System.out.println("Registration was not successful with registry at " + response.getOrigin()
                     + ". Reason: " + response.getInfo());
 
-            this.nodeState = NodeState.EXITING;
+            setState(NodeState.EXITING);
         }
 
     }
@@ -135,9 +126,7 @@ public class MessagingNode implements Node {
             System.exit(1);
         }
 
-
-        nodeState = NodeState.REGISTERING;
-
+        setState(NodeState.REGISTERING);
 
         try {
             registryAddress = progArgs[0];
@@ -184,7 +173,7 @@ public class MessagingNode implements Node {
                 String command = input.readLine();
 
                 if (command.toLowerCase().equals("exit") || command.toLowerCase().equals("deregister")) {
-                    nodeState = NodeState.DEREGISTERING;
+                    setState(NodeState.DEREGISTERING);
                     DeregisterRequest request = new DeregisterRequest(myIP, myPort, "localhost", -1);
                     connections.sendMessage(registryID, request);
                     System.out.println("Send deregistration request, waiting 3 seconds for response");
@@ -204,9 +193,11 @@ public class MessagingNode implements Node {
 
         try {
             tcpServer.stop();
-            helper.stop();
 
             serverThread.join();
+
+            helperThread.interrupt();
+
             helperThread.join();
         } catch (InterruptedException e) {
             System.err.println("Error: interrupted while stopping helper thread");

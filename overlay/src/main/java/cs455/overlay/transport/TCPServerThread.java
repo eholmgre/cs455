@@ -95,7 +95,7 @@ public class TCPServerThread implements Runnable{
 
     @Override
     public void run() {
-        while (serverSocket != null && serverSocket.isClosed()) {
+        while (serverSocket != null && ! serverSocket.isClosed()) {
             Socket clientSocket;
             try {
                 clientSocket = serverSocket.accept();
@@ -111,6 +111,8 @@ public class TCPServerThread implements Runnable{
             }
 
         }
+
+        System.out.println("tcp server thread exit");
 
     }
 }
