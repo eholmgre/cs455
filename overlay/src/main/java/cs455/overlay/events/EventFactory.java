@@ -17,7 +17,7 @@ public class EventFactory {
         // We must seize the means of EventFactory production!
     }
 
-    private RegisterRequest buildRegisterRequest(DataInputStream messageDataStream, String origin) throws IOException {
+    private RegisterRequest buildRegisterRequest(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
         int ipLength = messageDataStream.readInt();
         byte []ipBytes = new byte[ipLength];
         messageDataStream.readFully(ipBytes);
@@ -25,23 +25,47 @@ public class EventFactory {
 
         int port = messageDataStream.readInt();
 
-        return new RegisterRequest(ipString, port, origin);
+        return new RegisterRequest(ipString, port, origin, connectionId);
     }
 
-    private RegisterResponse buildRegisterResponse(DataInputStream messageDataStrean, String origin) throws IOException {
-        boolean success = messageDataStrean.readBoolean();
+    private RegisterResponse buildRegisterResponse(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        boolean success = messageDataStream.readBoolean();
 
-        int infoLength = messageDataStrean.readInt();
+        int infoLength = messageDataStream.readInt();
         byte []infoBytes = new byte[infoLength];
-        messageDataStrean.readFully(infoBytes);
+        messageDataStream.readFully(infoBytes);
         String info = new String(infoBytes);
 
-        int registerCount = messageDataStrean.readInt();
+        int registerCount = messageDataStream.readInt();
 
-        return new RegisterResponse(success, info, registerCount, origin);
+        return new RegisterResponse(success, info, registerCount, origin, connectionId);
     }
 
-    public Event createEvent(byte[] msg, String origin) throws IOException {
+    private DeregisterRequest buildDeregisterRequest(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int ipLength = messageDataStream.readInt();
+        byte []ipBytes = new byte[ipLength];
+        messageDataStream.readFully(ipBytes);
+        String ip = new String(ipBytes);
+
+        int port = messageDataStream.readInt();
+
+        return new DeregisterRequest(ip, port, origin, connectionId);
+    }
+
+    private DeregisterResponse buildDeregisterResponse(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        boolean success = messageDataStream.readBoolean();
+
+        int numberRegistered = messageDataStream.readInt();
+
+        int infoLength = messageDataStream.readInt();
+        byte []infoBytes = new byte[infoLength];
+        messageDataStream.readFully(infoBytes);
+        String info = new String(infoBytes);
+
+        return new DeregisterResponse(success, numberRegistered, info, origin, connectionId);
+    }
+
+    public Event createEvent(byte[] msg, String origin, int connectionId) throws IOException {
         Event message;
 
         ByteArrayInputStream messageByteStream = new ByteArrayInputStream(msg);
@@ -51,13 +75,17 @@ public class EventFactory {
 
         switch (type) {
             case REGISTER_REQUEST:
-                message = buildRegisterRequest(messageDataStream, origin);
-                System.out.println("Event factory creating REGISTER_REQUEST");
+                message = buildRegisterRequest(messageDataStream, origin, connectionId);
                 break;
 
             case REGISTER_RESPONSE:
-                System.out.println("Event factory creating REGISTER_RESPONSE");
-                message = buildRegisterResponse(messageDataStream, origin);
+                message = buildRegisterResponse(messageDataStream, origin, connectionId);
+                break;
+            case DEREGISTER_REQUEST:
+                message = buildDeregisterRequest(messageDataStream, origin, connectionId);
+                break;
+            case DEREGISTER_RESPONSE:
+                message = buildDeregisterResponse(messageDataStream, origin, connectionId);
                 break;
             default:
                 throw new IOException("unknown message enum - how did you even manage that?");

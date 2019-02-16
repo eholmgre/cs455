@@ -5,32 +5,31 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public class RegisterRequest implements Event {
-
+public class DeregisterResponse implements Event{
     private String origin;
-
-    // IP field contained in request
-    private String ip;
-
-    // Port field contained in request
-    private int port;
-
+    private int numberRegistered;
+    private boolean success;
+    private String info;
     private int connectionId;
 
-    public RegisterRequest(String ip, int port, String origin, int connectionId) {
-        this.ip = ip;
-        this.port = port;
+    public DeregisterResponse(boolean success, int numberRegistered, String info, String origin, int connectionId) {
+        this.success = success;
+        this.numberRegistered = numberRegistered;
+        this.info = info;
         this.origin = origin;
         this.connectionId = connectionId;
     }
 
-
-    public String getIp() {
-        return ip;
+    public boolean getSuccess() {
+        return success;
     }
 
-    public int getPort() {
-        return port;
+    public int getNumberRegistered() {
+        return numberRegistered;
+    }
+
+    public String getInfo() {
+        return info;
     }
 
     @Override
@@ -45,23 +44,25 @@ public class RegisterRequest implements Event {
 
     @Override
     public MessageTypes getType() {
-        return MessageTypes.REGISTER_REQUEST;
+        return MessageTypes.DEREGISTER_RESPONSE;
     }
 
     @Override
-    public byte []getBytes() throws IOException {
+    public byte[] getBytes() throws IOException {
         byte []marshaledBytes = null;
 
         ByteArrayOutputStream bOutStream = new ByteArrayOutputStream();
         DataOutputStream dOutStream = new DataOutputStream(new BufferedOutputStream(bOutStream));
 
-        dOutStream.writeInt(MessageTypes.REGISTER_REQUEST.getTypeCode());
+        dOutStream.writeInt(getType().getTypeCode());
 
-        byte []ipBytes = ip.getBytes(); // create byte array for IP string
-        dOutStream.writeInt(ipBytes.length);    // write length of IP string
-        dOutStream.write(ipBytes);  // write IP string
+        dOutStream.writeBoolean(success);
 
-        dOutStream.writeInt(port);
+        dOutStream.writeInt(numberRegistered);
+
+        byte []infoBytes = info.getBytes();
+        dOutStream.writeInt(infoBytes.length);
+        dOutStream.write(infoBytes);
 
         dOutStream.flush();
         marshaledBytes = bOutStream.toByteArray();

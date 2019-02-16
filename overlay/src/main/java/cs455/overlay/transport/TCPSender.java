@@ -15,7 +15,6 @@ public class TCPSender { //TODO: but what if the socket closes? how do we clean 
     }
 
     public void sendData(byte[] data) throws IOException {
-        System.out.println("Sending " + data.length + " bytes of data");
         int dataLength = data.length;
         dout.writeInt(dataLength);
         dout.write(data, 0, dataLength);

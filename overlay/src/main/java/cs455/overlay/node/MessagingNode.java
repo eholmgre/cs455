@@ -1,8 +1,6 @@
 package cs455.overlay.node;
 
-import cs455.overlay.events.Event;
-import cs455.overlay.events.RegisterRequest;
-import cs455.overlay.events.RegisterResponse;
+import cs455.overlay.events.*;
 import cs455.overlay.transport.ConnectionManager;
 import cs455.overlay.transport.TCPServerThread;
 
@@ -26,7 +24,7 @@ public class MessagingNode implements Node {
 
     private String registryAddress;
     private int registryPort;
-    private String registryID;
+    private int registryID;
 
     private MessagingNodeHelper helper;
     private Thread helperThread;
@@ -72,6 +70,8 @@ public class MessagingNode implements Node {
         @Override
         public void run() {
 
+            System.out.println("Message node helper thread starting");
+
             while (!stopped) {
                 //try {
                 if (!eventQueue.isEmpty()) {
@@ -81,6 +81,10 @@ public class MessagingNode implements Node {
                         case REGISTER_RESPONSE:
                             handleRegisterResponse((RegisterResponse) e);
                             break;
+                        case DEREGISTER_RESPONSE:
+                            handleDeregisterResponse((DeregisterResponse) e);
+                            break;
+
                     }
                 }
                 //} catch (Exception e) {
@@ -88,16 +92,23 @@ public class MessagingNode implements Node {
                 //}
 
                 if (nodeState == NodeState.EXITING) {
-                    return;
+                    break;
                 }
             }
+
+            System.out.println("Message node helper thread exiting");
         }
     }
 
     @Override
     public void onEvent(Event event) {
         eventQueue.add(event);
+    }
 
+    private void handleDeregisterResponse(DeregisterResponse response) {
+        System.out.println("Deregistration from registry " + (response.getSuccess() ? "successful" : "failed") + ". ("
+        + response.getInfo() + "). " + response.getNumberRegistered() + " nodes currently registered on registry.");
+        nodeState = NodeState.EXITING;
     }
 
     private void handleRegisterResponse(RegisterResponse response) {
@@ -134,8 +145,8 @@ public class MessagingNode implements Node {
 
             registryID = connections.newConnection(registryAddress, registryPort);
         } catch (IOException e) {
-            System.out.println("Error: could not newConnection to registry on " + registryAddress + ":" + registryPort);
-            System.out.println(e.getMessage());
+            System.err.println("Error: could not newConnection to registry on " + registryAddress + ":" + registryPort);
+            System.err.println(e.getMessage());
             return;
         }
 
@@ -150,10 +161,10 @@ public class MessagingNode implements Node {
 
             System.out.println("Attempting to register with registry at " + registryAddress + ":" + registryPort);
 
-            connections.sendMessage(registryID, new RegisterRequest(registryAddress, registryPort, "localhost"));
+            connections.sendMessage(registryID, new RegisterRequest(myIP, myPort, "localhost", -1));
 
         } catch (IOException e) {
-            System.out.println(e.getMessage());
+            System.err.println(e.getMessage());
             return;
         }
 
@@ -172,30 +183,42 @@ public class MessagingNode implements Node {
 
                 String command = input.readLine();
 
-                if (command.toLowerCase().equals("exit")) {
-                    nodeState = NodeState.EXITING;
+                if (command.toLowerCase().equals("exit") || command.toLowerCase().equals("deregister")) {
+                    nodeState = NodeState.DEREGISTERING;
+                    DeregisterRequest request = new DeregisterRequest(myIP, myPort, "localhost", -1);
+                    connections.sendMessage(registryID, request);
+                    System.out.println("Send deregistration request, waiting 3 seconds for response");
+                    Thread.sleep(3000);
                     break;
                 }
             } catch (IOException e) {
-                System.out.println("Error: IOException while reading user input");
-                System.out.println(e.getMessage());
+                System.err.println("Error: IOException while reading user input " + e.getMessage());
+                break;
+            } catch (InterruptedException e) {
+                System.err.println("Error: interrupted while waiting for deregister response " + e.getMessage());
                 break;
             }
         }
 
-
-        tcpServer.stop();
-        helper.stop();
-
+        System.out.println("Exited command loop");
 
         try {
+            tcpServer.stop();
+            helper.stop();
+
             serverThread.join();
             helperThread.join();
         } catch (InterruptedException e) {
-            System.out.println("Error: interrupted while stopping helper thread");
-            System.out.println(e.getMessage());
+            System.err.println("Error: interrupted while stopping helper thread");
+            System.err.println(e.getMessage());
+            return;
+        } catch (IOException e) {
+            System.err.println("Error: IOException while stopping helper threads (server thread)");
+            System.err.println(e.getMessage());
             return;
         }
+
+        System.out.println("Helper threads joined, bye!");
 
 
     }

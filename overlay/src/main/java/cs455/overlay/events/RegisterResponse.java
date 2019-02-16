@@ -11,11 +11,14 @@ public class RegisterResponse implements Event{
 
     private int registerCount;
 
-    public RegisterResponse(boolean success, String info, int registerCount, String origin) {
+    private int connectionId;
+
+    public RegisterResponse(boolean success, String info, int registerCount, String origin, int connectionId) {
         this.success = success;
         this.info = info;
         this.registerCount = registerCount;
         this.origin = origin;
+        this.connectionId = connectionId;
     }
 
     public boolean getSuccess() {
@@ -28,6 +31,11 @@ public class RegisterResponse implements Event{
 
     public int getRegisterCount() {
         return registerCount;
+    }
+
+    @Override
+    public int getConnectionId() {
+        return connectionId;
     }
 
     @Override
@@ -60,8 +68,9 @@ public class RegisterResponse implements Event{
         dOutStream.flush();
 
         marshaledBytes = bOutStream.toByteArray();
-        bOutStream.close();
+
         dOutStream.close();
+        bOutStream.close();
 
         return marshaledBytes;
     }

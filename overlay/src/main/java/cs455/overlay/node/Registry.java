@@ -1,10 +1,8 @@
 package cs455.overlay.node;
 
-import cs455.overlay.events.RegisterRequest;
-import cs455.overlay.events.RegisterResponse;
+import cs455.overlay.events.*;
 import cs455.overlay.transport.ConnectionManager;
 import cs455.overlay.transport.TCPServerThread;
-import cs455.overlay.events.Event;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,12 +18,14 @@ public class Registry implements Node {
         String id;
         String ip;
         int port;
+        int connectionId;
         ArrayList<String> connections;
 
-        public MessagingNodeHandle(String id, String ip, int port) {
+        public MessagingNodeHandle(String id, String ip, int port, int connectionId) {
             this.id = id;
             this.ip = ip;
             this.port = port;
+            this.connectionId = connectionId;
             connections = new ArrayList<>();
         }
     }
@@ -55,17 +55,22 @@ public class Registry implements Node {
             System.out.println("Registry helper thread starting.");
             while (!beenStopped()) {
                 try {
+                    // might just wanna use a blocking queue
                     if (! eventQueue.isEmpty()) {
                         Event e = eventQueue.poll();
 
                         switch (e.getType()) {
                             case REGISTER_REQUEST:
                                 handleRegisterRequest((RegisterRequest) e);
+                                break;
+                            case DEREGISTER_REQUEST:
+                                handleDeregisterRequest((DeregisterRequest) e);
+                                break;
                         }
                     }
                 } catch (Exception e) {
                     System.err.println("Error in registry helper thread: " + e.getMessage());
-                    break;
+                    break; // maybe don't need to break?
                 }
 
             }
@@ -113,7 +118,7 @@ public class Registry implements Node {
 
         String requestId = e.getIp() + ':' + e.getPort();
 
-        System.out.println(requestId);
+        int connectioID = e.getConnectionId();
 
         if (! e.getIp().equals(e.getOrigin())) {
             // Error: request origin and ip do not match
@@ -136,14 +141,63 @@ public class Registry implements Node {
 
         if (success) {
             info = "Welcome aboard";
-            messagingNodes.add(new MessagingNodeHandle(requestId, e.getIp(), e.getPort()));
+            messagingNodes.add(new MessagingNodeHandle(requestId, e.getIp(), e.getPort(), connectioID));
         }
 
-        RegisterResponse response = new RegisterResponse(success, info, registerCount, "localhost");
+        RegisterResponse response = new RegisterResponse(success, info, registerCount, "localhost", connectioID);
 
-        connectionManager.sendMessage(requestId, response);
+        connectionManager.sendMessage(connectioID, response);
 
-        System.out.println("Sent registration response to " + requestId + ".");
+        System.out.println("Registration " + (success ? "successful" : "failed") + " for node " + requestId
+                + " (" + info + "). " + registerCount + " nodes registered.");
+    }
+
+    private void handleDeregisterRequest(DeregisterRequest e) throws IOException, InterruptedException {
+        boolean success = true;
+        String info = "";
+
+        String requestId = e.getIp() + ":" + e.getPort();
+
+
+        int connectionId = e.getConnectionId();
+
+        boolean found = false;
+        for (MessagingNodeHandle node : messagingNodes) {
+            if (node.id.equals(requestId)) {
+                found = true;
+            }
+        }
+
+        if (! found) {
+            success = false;
+            info = "No node found with id " + requestId;
+        }
+
+        if (! e.getIp().equals(e.getOrigin())) {
+            // Error: request origin and ip do not match
+            success = false;
+            info = "Request ip field does not match request origin";
+        }
+
+        System.out.println("Received deregistration request from " + requestId
+                + ". Deregistration " + (success ? "successful." : "failed (" + info + ")."));
+
+        if (success) {
+            info = "well, bye";
+
+            messagingNodes.removeIf(h -> h.id.equals(requestId));
+        }
+
+        int registerCount = messagingNodes.size();
+
+        DeregisterResponse response = new DeregisterResponse(success, registerCount, info, "localhost", connectionId);
+
+        connectionManager.sendMessage(connectionId, response);
+
+        connectionManager.closeConnection(connectionId);
+
+        System.out.println("Deregistration " + (success ? "successful" : "failed") + " for node " + requestId
+                + " (" + info + "). " + registerCount + " nodes registered.");
     }
 
 
@@ -167,7 +221,7 @@ public class Registry implements Node {
             myIP = InetAddress.getLocalHost().getHostAddress();
             myPort = Integer.parseInt(progArgs[0]);
         } catch (UnknownHostException e) {
-            System.out.println("Error: unable to determine machine hostname. " + e.getMessage());
+            System.err.println("Error: unable to determine machine hostname. " + e.getMessage());
             return;
         }
 
@@ -178,7 +232,7 @@ public class Registry implements Node {
         try {
             tcpServer = new TCPServerThread(Integer.parseInt(progArgs[0]), connectionManager, this);
         } catch (IOException | IllegalArgumentException e) {
-            System.out.println("Error starting TCP listener on port " + progArgs[0]);
+            System.err.println("Error starting TCP listener on port " + progArgs[0]);
             return;
         }
 
@@ -201,20 +255,25 @@ public class Registry implements Node {
                     break;
                 }
             } catch (IOException e) {
-                System.out.println("Error: IOException while reading user input");
-                System.out.println(e.getMessage());
+                System.err.println("Error: IOException while reading user input");
+                System.err.println(e.getMessage());
                 break;
             }
         }
 
-        tcpServer.stop();
-        registryHelper.stop();
 
         try {
+            tcpServer.stop();
+            registryHelper.stop();
+
             serverThread.join();
             helperThread.join();
         } catch (InterruptedException e) {
-            System.out.println("Error: interrupted while joining helper threads");
+            System.err.println("Error: interrupted while joining helper threads");
+            return;
+        } catch (IOException e) {
+            System.err.println("Error: IOException while stopping server thread.");
+            System.err.println(e.getMessage());
             return;
         }
 

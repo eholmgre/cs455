@@ -69,8 +69,8 @@ public class TCPServerThread implements Runnable{
         return isStopped;
     }
 
-    public synchronized void stop() {
-        this.isStopped = true;
+    public synchronized void stop() throws IOException{
+        serverSocket.close();
     }
 
     public TCPServerThread(int port, ConnectionManager connectionManager, Node parent) throws IOException {
@@ -95,17 +95,18 @@ public class TCPServerThread implements Runnable{
 
     @Override
     public void run() {
-        while (! beenStoped()) {
+        while (serverSocket != null && serverSocket.isClosed()) {
             Socket clientSocket;
             try {
                 clientSocket = serverSocket.accept();
                 TCPReceiverThread receiver = new TCPReceiverThread(clientSocket, parent);
                 Thread receiverThread = new Thread(receiver);
+                int connectionID = connections.addConnection(clientSocket, receiver, receiverThread);
+                receiver.setConnectionId(connectionID);
                 receiverThread.start();
-                connections.addConnection(clientSocket, receiver, receiverThread);
                 System.out.println("New connection: " + clientSocket.getInetAddress().getHostAddress());
             } catch (Exception e) {
-                System.out.println("Error: TCP server thread failed.\n" + e.getMessage());
+                System.err.println("Error: TCP server thread failed.\n" + e.getMessage());
                 break;
             }
 

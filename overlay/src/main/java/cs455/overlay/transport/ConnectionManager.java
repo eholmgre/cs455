@@ -3,9 +3,7 @@ package cs455.overlay.transport;
 import cs455.overlay.events.Event;
 import cs455.overlay.node.Node;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -13,7 +11,7 @@ import java.util.NoSuchElementException;
 
 public class ConnectionManager {
     private class Connection {
-        protected String identifier;
+        protected int identifier;
         protected String address;
         protected int port;
         protected Socket socket;
@@ -27,15 +25,18 @@ public class ConnectionManager {
 
     private Node parent;
 
+    private int idCounter;
+
 
     public ConnectionManager(Node parent) {
         this.parent = parent;
         connections = new ArrayList<>();
+        idCounter = 0;
     }
 
-    public String newConnection(String address, int port) throws IOException {
+    public int newConnection(String address, int port) throws IOException {
         Connection connection = new Connection();
-        connection.identifier = address + ":" + port;
+        connection.identifier = idCounter++;
         connection.socket = new Socket(address, port);
         connection.address = connection.socket.getInetAddress().getHostAddress();
         connection.port = connection.socket.getPort();
@@ -52,10 +53,10 @@ public class ConnectionManager {
     }
 
 
-    public String addConnection(Socket socket, TCPReceiverThread receiver, Thread thread)
+    public int addConnection(Socket socket, TCPReceiverThread receiver, Thread thread)
             throws IOException {
         Connection connection = new Connection();
-        connection.identifier = socket.getInetAddress().getHostAddress() + ':' + socket.getLocalPort();
+        connection.identifier = idCounter++;
         connection.address = socket.getInetAddress().getHostAddress();
         connection.port = socket.getPort();
         connection.socket = socket;
@@ -69,10 +70,9 @@ public class ConnectionManager {
     }
 
 
-    public void sendMessage(String connectionID, Event message) throws IOException {
+    public void sendMessage(int connectionID, Event message) throws IOException {
         for (Connection c : connections) {
-            System.out.println(c.identifier);
-            if (c.identifier.equals(connectionID)) {
+            if (c.identifier == connectionID) {
                 byte []bytes = message.getBytes();
                 c.sender.sendData(bytes);
                 return;
@@ -81,26 +81,15 @@ public class ConnectionManager {
         throw new NoSuchElementException("Error: no connection " + connectionID);
     }
 
-    public ArrayList<String> getConnectionList() {
-        ArrayList<String> clist = new ArrayList<>();
-        for (Connection c : connections) {
-            clist.add(c.identifier);
-        }
-
-        return clist;
-    }
-
-    public void closeConnection(String id) throws IOException, InterruptedException {
+    public void closeConnection(int id) throws IOException, InterruptedException {
         synchronized (this) {
             for (Iterator<Connection> i = connections.iterator(); i.hasNext(); ) {
                 Connection c = i.next();
-                if (c.identifier.equals(id)) {
-                    c.receiver.stop();
+                if (c.identifier == id) {
+                    c.socket.close();
                     System.out.println("Attempting to stop received thread for " + c.identifier);
                     c.receiverThread.join();
                     System.out.println("Joined received thread for " + c.identifier);
-                    c.socket.close();
-
                     i.remove();
                     return;
                 }
