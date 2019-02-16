@@ -1,6 +1,7 @@
 package cs455.overlay.transport;
 
 import cs455.overlay.events.EventFactory;
+import cs455.overlay.node.Node;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -15,6 +16,8 @@ public class TCPReceiverThread implements Runnable{
 
     private String origin;
 
+    private Node parent;
+
     private volatile boolean isStopped; //TODO: see if we can't stop on socket close
 
     private synchronized boolean beenStopped() {
@@ -25,8 +28,9 @@ public class TCPReceiverThread implements Runnable{
         this.isStopped = true;
     }
 
-    public TCPReceiverThread(Socket socket) throws IOException {
+    public TCPReceiverThread(Socket socket, Node parent) throws IOException {
         this.socket = socket;
+        this.parent = parent;
         din = new DataInputStream(socket.getInputStream());
         isStopped = false;
         messageFactory = EventFactory.getInstance();
@@ -49,7 +53,7 @@ public class TCPReceiverThread implements Runnable{
                 System.out.println("TCP receiver read " + dataLength + " bytes.");
 
                 //TODO: WE'RE NOT DOING ANYTHING WITH THE NEW MESSAGE AAAHHHHH
-                messageFactory.createEvent(data, origin);
+                parent.onEvent(messageFactory.createEvent(data, origin));
 
             } catch (IOException e) { // includes SocketException
                 System.err.println("Error: exception in TCP thread for " + origin + ": " + e.getMessage());

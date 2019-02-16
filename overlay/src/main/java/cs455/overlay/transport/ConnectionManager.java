@@ -1,6 +1,7 @@
 package cs455.overlay.transport;
 
 import cs455.overlay.events.Event;
+import cs455.overlay.node.Node;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -13,7 +14,7 @@ import java.util.NoSuchElementException;
 public class ConnectionManager {
     private class Connection {
         protected String identifier;
-        protected InetAddress address;
+        protected String address;
         protected int port;
         protected Socket socket;
         protected TCPSender sender;
@@ -24,31 +25,53 @@ public class ConnectionManager {
 
     private ArrayList<Connection> connections;
 
+    private Node parent;
 
-    public ConnectionManager() {
+
+    public ConnectionManager(Node parent) {
+        this.parent = parent;
         connections = new ArrayList<>();
     }
 
-    public String newConnection(Socket socket, TCPReceiverThread receiver, Thread thread)
+    public String newConnection(String address, int port) throws IOException {
+        Connection connection = new Connection();
+        connection.identifier = address + ":" + port;
+        connection.socket = new Socket(address, port);
+        connection.address = connection.socket.getInetAddress().getHostAddress();
+        connection.port = connection.socket.getPort();
+        connection.sender = new TCPSender(connection.socket);
+        connection.receiver = new TCPReceiverThread(connection.socket, parent);
+        connection.receiverThread = new Thread(connection.receiver);
+
+        connection.receiverThread.start();
+
+        connections.add(connection);
+
+        return connection.identifier;
+
+    }
+
+
+    public String addConnection(Socket socket, TCPReceiverThread receiver, Thread thread)
             throws IOException {
         Connection connection = new Connection();
-        connection.identifier = socket.getInetAddress().toString() + ':' + socket.getLocalPort();
-        connection.address = socket.getInetAddress();
+        connection.identifier = socket.getInetAddress().getHostAddress() + ':' + socket.getLocalPort();
+        connection.address = socket.getInetAddress().getHostAddress();
         connection.port = socket.getPort();
         connection.socket = socket;
         connection.sender = new TCPSender(socket);
         connection.receiver = receiver;
         connection.receiverThread = thread;
 
-        synchronized (this) { // todo: does this really need to be synchronized?
-            connections.add(connection);
-        }
+        connections.add(connection);
 
         return connection.identifier;
     }
 
+
     public void sendMessage(String connectionID, Event message) throws IOException {
         for (Connection c : connections) {
+            System.out.println(c.identifier);
             if (c.identifier.equals(connectionID)) {
                 byte []bytes = message.getBytes();
                 c.sender.sendData(bytes);
@@ -67,7 +90,6 @@ public class ConnectionManager {
         return clist;
     }
 
-    // TODO: KeyException is inappropriate
     public void closeConnection(String id) throws IOException, InterruptedException {
         synchronized (this) {
             for (Iterator<Connection> i = connections.iterator(); i.hasNext(); ) {

@@ -1,5 +1,7 @@
 package cs455.overlay.transport;
 
+import cs455.overlay.node.Node;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -61,6 +63,8 @@ public class TCPServerThread implements Runnable{
 
     private int port;
 
+    private Node parent;
+
     private synchronized boolean beenStoped() {
         return isStopped;
     }
@@ -69,14 +73,16 @@ public class TCPServerThread implements Runnable{
         this.isStopped = true;
     }
 
-    public TCPServerThread(int port, ConnectionManager connectionManager) throws IOException {
+    public TCPServerThread(int port, ConnectionManager connectionManager, Node parent) throws IOException {
+        this.parent = parent;
         this.connections = connectionManager;
         ServerSocketFactory ssf = new ServerSocketFactory(port);
         serverSocket = ssf.makeServerSocket();
         this.port = ssf.getPort();
     }
 
-    public TCPServerThread(ConnectionManager connectionManager) throws IOException {
+    public TCPServerThread(ConnectionManager connectionManager, Node parent) throws IOException {
+        this.parent = parent;
         this.connections = connectionManager;
         ServerSocketFactory ssf = new ServerSocketFactory();
         serverSocket = ssf.makeServerSocket();
@@ -93,10 +99,10 @@ public class TCPServerThread implements Runnable{
             Socket clientSocket;
             try {
                 clientSocket = serverSocket.accept();
-                TCPReceiverThread receiver = new TCPReceiverThread(clientSocket);
+                TCPReceiverThread receiver = new TCPReceiverThread(clientSocket, parent);
                 Thread receiverThread = new Thread(receiver);
                 receiverThread.start();
-                connections.newConnection(clientSocket, receiver, receiverThread);
+                connections.addConnection(clientSocket, receiver, receiverThread);
                 System.out.println("New connection: " + clientSocket.getInetAddress().getHostAddress());
             } catch (Exception e) {
                 System.out.println("Error: TCP server thread failed.\n" + e.getMessage());

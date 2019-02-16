@@ -4,18 +4,16 @@ import cs455.overlay.events.Event;
 import cs455.overlay.events.RegisterRequest;
 import cs455.overlay.events.RegisterResponse;
 import cs455.overlay.transport.ConnectionManager;
-import cs455.overlay.transport.TCPReceiverThread;
 import cs455.overlay.transport.TCPServerThread;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 
-public class MessagingNode implements Node{
+public class MessagingNode implements Node {
 
     private enum NodeState {
         REGISTERING, REGISTERED, DEREGISTERING, CONNECTING, ROUTING, WORKING, TASK_COMPLETE, SENDING_SUMMARY, EXITING;
@@ -44,10 +42,10 @@ public class MessagingNode implements Node{
 
 
     //public MessagingNode(String address, int port) {
-    public MessagingNode(String []args) {
+    public MessagingNode(String[] args) {
         progArgs = args;
         nodeState = NodeState.REGISTERING;
-        connections = new ConnectionManager();
+        connections = new ConnectionManager(this);
         eventQueue = new ConcurrentLinkedQueue<>();
     }
 
@@ -74,17 +72,17 @@ public class MessagingNode implements Node{
         @Override
         public void run() {
 
-            while (! stopped) {
+            while (!stopped) {
                 //try {
-                    if (! eventQueue.isEmpty()) {
-                        Event e = eventQueue.poll();
+                if (!eventQueue.isEmpty()) {
+                    Event e = eventQueue.poll();
 
-                        switch (e.getType()) {
-                            case REGISTER_RESPONSE:
-                                handleRegisterResponse((RegisterResponse) e);
-                                break;
-                        }
+                    switch (e.getType()) {
+                        case REGISTER_RESPONSE:
+                            handleRegisterResponse((RegisterResponse) e);
+                            break;
                     }
+                }
                 //} catch (Exception e) {
                 //    System.out.println("Error in helper thread: " + e.getMessage());
                 //}
@@ -94,16 +92,6 @@ public class MessagingNode implements Node{
                 }
             }
         }
-    }
-
-    //TODO: shoudn't this just be fully deligated to connection manager?
-    private String createConnection(String address, int port) throws IOException {
-        Socket soc = new Socket(address, port);
-        TCPReceiverThread receiver = new TCPReceiverThread(soc);
-        Thread receiverThread = new Thread(receiver);
-        receiverThread.start();
-
-        return connections.newConnection(soc, receiver, receiverThread);
     }
 
     @Override
@@ -118,11 +106,10 @@ public class MessagingNode implements Node{
                     + response.getRegisterCount() + " other nodes registered at this time.");
 
             //TODO: maybe synchronize?
-
             this.nodeState = NodeState.REGISTERED;
 
         } else {
-            System.out.println("Registeration was not successful with registry at " + response.getOrigin()
+            System.out.println("Registration was not successful with registry at " + response.getOrigin()
                     + ". Reason: " + response.getInfo());
 
             this.nodeState = NodeState.EXITING;
@@ -145,16 +132,16 @@ public class MessagingNode implements Node{
             registryAddress = progArgs[0];
             registryPort = Integer.parseInt(progArgs[1]);
 
-            registryID = createConnection(registryAddress, registryPort);
+            registryID = connections.newConnection(registryAddress, registryPort);
         } catch (IOException e) {
-            System.out.println("Error: could not connect to registry on " + registryAddress + ":" + registryPort);
+            System.out.println("Error: could not newConnection to registry on " + registryAddress + ":" + registryPort);
             System.out.println(e.getMessage());
             return;
         }
 
 
         try {
-            tcpServer = new TCPServerThread(connections);
+            tcpServer = new TCPServerThread(connections, this);
             myPort = tcpServer.getPort();
             myIP = InetAddress.getLocalHost().getHostAddress();
 
@@ -209,7 +196,6 @@ public class MessagingNode implements Node{
             System.out.println(e.getMessage());
             return;
         }
-
 
 
     }

@@ -64,7 +64,7 @@ public class Registry implements Node {
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("Error in registry helper thread: " + e.getMessage());
+                    System.err.println("Error in registry helper thread: " + e.getMessage());
                     break;
                 }
 
@@ -101,7 +101,7 @@ public class Registry implements Node {
         progArgs = args;
         registryState = RegistryState.REGISTRATION;
         messagingNodes = new ArrayList<>();
-        connectionManager = new ConnectionManager();
+        connectionManager = new ConnectionManager(this);
         eventQueue = new ConcurrentLinkedQueue<>();
 
 
@@ -112,6 +112,8 @@ public class Registry implements Node {
         String info = "";
 
         String requestId = e.getIp() + ':' + e.getPort();
+
+        System.out.println(requestId);
 
         if (! e.getIp().equals(e.getOrigin())) {
             // Error: request origin and ip do not match
@@ -174,7 +176,7 @@ public class Registry implements Node {
         registryState = RegistryState.REGISTRATION;
 
         try {
-            tcpServer = new TCPServerThread(Integer.parseInt(progArgs[0]), connectionManager);
+            tcpServer = new TCPServerThread(Integer.parseInt(progArgs[0]), connectionManager, this);
         } catch (IOException | IllegalArgumentException e) {
             System.out.println("Error starting TCP listener on port " + progArgs[0]);
             return;
