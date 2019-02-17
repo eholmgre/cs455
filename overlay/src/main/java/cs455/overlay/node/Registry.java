@@ -3,6 +3,7 @@ package cs455.overlay.node;
 import cs455.overlay.events.*;
 import cs455.overlay.transport.ConnectionManager;
 import cs455.overlay.transport.TCPServerThread;
+import cs455.overlay.util.Overlay;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,26 +11,9 @@ import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class Registry implements Node {
-
-    protected class MessagingNodeHandle {
-        String id;
-        String ip;
-        int port;
-        int connectionId;
-        ArrayList<String> connections;
-
-        public MessagingNodeHandle(String id, String ip, int port, int connectionId) {
-            this.id = id;
-            this.ip = ip;
-            this.port = port;
-            this.connectionId = connectionId;
-            connections = new ArrayList<>();
-        }
-    }
 
     protected class RegistryHelperThread implements Runnable {
 
@@ -56,16 +40,16 @@ public class Registry implements Node {
             System.out.println("Registry helper thread starting.");
             while (!beenStopped()) {
                 try {
-                        Event e = eventQueue.take();
+                    Event e = eventQueue.take();
 
-                        switch (e.getType()) {
-                            case REGISTER_REQUEST:
-                                handleRegisterRequest((RegisterRequest) e);
-                                break;
-                            case DEREGISTER_REQUEST:
-                                handleDeregisterRequest((DeregisterRequest) e);
-                                break;
-                        }
+                    switch (e.getType()) {
+                        case REGISTER_REQUEST:
+                            handleRegisterRequest((RegisterRequest) e);
+                            break;
+                        case DEREGISTER_REQUEST:
+                            handleDeregisterRequest((DeregisterRequest) e);
+                            break;
+                    }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted" + e.getMessage());
                     break;
@@ -90,7 +74,7 @@ public class Registry implements Node {
     private String myIP;
     private int myPort;
 
-    private ArrayList<MessagingNodeHandle> messagingNodes;
+    private Overlay overlay;
 
     private TCPServerThread tcpServer;
     private Thread serverThread;
@@ -105,9 +89,9 @@ public class Registry implements Node {
     public Registry(String[] args) {
         progArgs = args;
         registryState = RegistryState.REGISTRATION;
-        messagingNodes = new ArrayList<>();
         connectionManager = new ConnectionManager(this);
         eventQueue = new LinkedBlockingQueue<>();
+        overlay = new Overlay();
     }
 
     private synchronized RegistryState getState() {
@@ -118,7 +102,7 @@ public class Registry implements Node {
         registryState = state;
     }
 
-    private void handleRegisterRequest(RegisterRequest e) throws IOException{
+    private void handleRegisterRequest(RegisterRequest e) throws IOException {
         boolean success = true;
         String info = "";
 
@@ -126,28 +110,24 @@ public class Registry implements Node {
 
         int connectioID = e.getConnectionId();
 
-        if (! e.getIp().equals(e.getOrigin())) {
+        if (!e.getIp().equals(e.getOrigin())) {
             // Error: request origin and ip do not match
             success = false;
             info = "Request ip field does not match request origin";
         }
 
-        for (MessagingNodeHandle node : messagingNodes) {
-            if (node.id.equals(requestId)) {
-                success = false;
-                info = "A node is currently registered on this ip and port";
-            }
-
+        if (overlay.inNodes(requestId)) {
+            success = false;
         }
 
         System.out.println("Received registration request from " + requestId
                 + ". Registration " + (success ? "successful." : "failed (" + info + ")."));
 
-        int registerCount = messagingNodes.size();
+        int registerCount = overlay.getCount();
 
         if (success) {
             info = "Welcome aboard";
-            messagingNodes.add(new MessagingNodeHandle(requestId, e.getIp(), e.getPort(), connectioID));
+            overlay.addNode(e.getIp(), e.getPort(), connectioID);
         }
 
         RegisterResponse response = new RegisterResponse(success, info, registerCount, "localhost", connectioID);
@@ -164,22 +144,13 @@ public class Registry implements Node {
 
         String requestId = e.getIp() + ":" + e.getPort();
 
-
         int connectionId = e.getConnectionId();
 
-        boolean found = false;
-        for (MessagingNodeHandle node : messagingNodes) {
-            if (node.id.equals(requestId)) {
-                found = true;
-            }
-        }
-
-        if (! found) {
+        if (!overlay.inNodes(requestId)) {
             success = false;
-            info = "No node found with id " + requestId;
         }
 
-        if (! e.getIp().equals(e.getOrigin())) {
+        if (!e.getIp().equals(e.getOrigin())) {
             // Error: request origin and ip do not match
             success = false;
             info = "Request ip field does not match request origin";
@@ -191,10 +162,10 @@ public class Registry implements Node {
         if (success) {
             info = "well, bye";
 
-            messagingNodes.removeIf(h -> h.id.equals(requestId));
+            overlay.removeNode(requestId);
         }
 
-        int registerCount = messagingNodes.size();
+        int registerCount = overlay.getCount();
 
         DeregisterResponse response = new DeregisterResponse(success, registerCount, info, "localhost", connectionId);
 

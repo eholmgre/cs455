@@ -36,11 +36,9 @@ public class MessagingNode implements Node {
 
     private ConnectionManager connections;
 
-    //private ConcurrentLinkedQueue<Event> eventQueue;
     private LinkedBlockingQueue<Event> eventQueue;
 
 
-    //public MessagingNode(String address, int port) {
     public MessagingNode(String[] args) {
         progArgs = args;
         nodeState = NodeState.REGISTERING;
