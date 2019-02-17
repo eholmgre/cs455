@@ -9,10 +9,10 @@ import org.junit.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Random;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 
 public class Tests {
@@ -53,44 +53,61 @@ public class Tests {
     @Test
     public void testGenerateOverlay() {
 
-        // random testing, the most rigorous testing there is..
+        // probabilistic random testing, the most rigorous testing there is..
 
         Random rand = new Random();
 
-        Overlay overlay = new Overlay();
+        for (int whocares = 0; whocares < 100; ++whocares) {
 
-        int n = rand.nextInt(100);
+            Overlay overlay = new Overlay();
 
-        int k;
-        if (n % 2 == 0) {
-            k = 1 + rand.nextInt(n - 1);
-        } else {
-            k = 2 * ( 1 + rand.nextInt((n / 2) - 1));
-        }
+            int n = 3 + rand.nextInt(100);
 
-        assertTrue(n >= k + 1 && (n * k) % 2 == 0);
-
-        for (int i = 0; i < n; i ++) {
-            overlay.addNode("node" + i, 0, 0);
-        }
-
-        System.out.println("n = " + n + ", k = " + k);
-
-        ArrayList<String []> connections;
-
-        try {
-
-            connections = overlay.generateOverlay(k);
-
-            System.out.println("# connections = " + connections.size());
-
-            assertTrue(connections.size() == n * (k / 2.0));
-
-            for (String [] con : connections) {
-                System.out.println(con[0] + " <---> " + con[1]);
+            int k;
+            if (n % 2 == 0) {
+                k = 1 + rand.nextInt(n - 1);
+            } else {
+                k = 2 * (1 + rand.nextInt(Math.max((n / 2) - 1, 1)));
             }
-        } catch (IllegalArgumentException e) {
-            fail();
+
+            System.out.println("n = " + n + ", k = " + k);
+
+            assertTrue(n >= k + 1 && (n * k) % 2 == 0);
+
+            for (int i = 0; i < n; i++) {
+                overlay.addNode("node" + i, 0, 0);
+            }
+
+            ArrayList<String[]> connections;
+
+        HashMap<String, ArrayList<String>> conMap = new HashMap<>();
+
+        for (int i = 0; i < n; ++i) {
+            conMap.put("node" + i + ":0", new ArrayList<>());
+        }
+
+            try {
+
+                connections = overlay.generateOverlay(k);
+
+                System.out.println("# connections = " + connections.size());
+
+                assertTrue(connections.size() == n * (k / 2.0));
+
+                for (String[] con : connections) {
+                    assertFalse(conMap.get(con[0]).contains(con[0]));
+                    assertFalse(conMap.get(con[0]).contains(con[1]));
+                    conMap.get(con[0]).add(con[1]);
+                    conMap.get(con[1]).add(con[0]);
+                }
+
+                for (int i = 0; i < n; ++i) {
+                    assertTrue(conMap.get("node" + i + ":0").size() == k);
+                }
+
+            } catch (IllegalArgumentException e) {
+                fail();
+            }
         }
     }
 }

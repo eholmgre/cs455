@@ -94,7 +94,7 @@ public class Overlay {
                 connections.add(new String[] {nodes.get(i).id, nodes.get(j).id});
             }
 
-            if (k % 2 == 1) {
+            if (k % 2 == 1 && i < n / 2) {
                 int j = (i + (n / 2)) % n;
 
                 nodes.get(i).connections.add(nodes.get(j).id);
