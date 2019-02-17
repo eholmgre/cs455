@@ -1,8 +1,6 @@
 package cs455.overlay.util;
 
-import cs455.overlay.node.Node;
 
-import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.Random;
@@ -10,6 +8,10 @@ import java.util.Random;
 public class Overlay {
 
     private ArrayList<MessageNode> nodes;
+
+    private ArrayList<String []> connections;
+
+    private ArrayList<Integer> weights;
 
     private class MessageNode {
         String id;
@@ -36,6 +38,9 @@ public class Overlay {
     }
 
     public void addNode(String ip, int port, int connectionId) {
+        connections = null;
+        weights = null;
+
         String id = ip + ":" + port;
 
         nodes.add(new MessageNode(id, ip, port, connectionId));
@@ -44,6 +49,9 @@ public class Overlay {
     public void removeNode(String id) throws NoSuchElementException {
         if (!nodes.removeIf(n -> n.id.equals(id))) {
             throw new NoSuchElementException("remove: " + id + " not found in overlay");
+        } else {
+            connections = null;
+            weights = null;
         }
     }
 
@@ -67,10 +75,14 @@ public class Overlay {
         return false;
     }
 
-    private void clearConnections() {
+    public ArrayList<String []> getNodeInfo() {
+        ArrayList<String []> nodeInfo = new ArrayList<>();
+
         for (MessageNode node : nodes) {
-            node.connections = new ArrayList<>();
+            nodeInfo.add(new String[] {node.ip, Integer.toString(node.port)});
         }
+
+        return nodeInfo;
     }
 
     public ArrayList<String[]> generateOverlay(int connectionRequirement) { // what a dumb thing to return
@@ -78,9 +90,13 @@ public class Overlay {
             throw new IllegalArgumentException("Invalid connection requirement.");
         }
 
-        clearConnections();
+        weights = null;
 
-        ArrayList<String[]> connections = new ArrayList<>();
+        for (MessageNode node : nodes) {
+            node.connections = new ArrayList<>();
+        }
+
+        this.connections = new ArrayList<>();
 
         int k = connectionRequirement;
         int n = nodes.size();
@@ -104,11 +120,22 @@ public class Overlay {
             }
         }
 
-
         return connections;
     }
 
-    public void generateWeights() {
+    public ArrayList<Integer> generateWeights() {
+        if (connections == null) {
+            System.out.println("you need to generate connections first.");
+        }
 
+        weights = new ArrayList<>();
+
+        Random random = new Random();
+
+        for (int i = 0; i < connections.size(); ++i) {
+            weights.add(1 + random.nextInt(9));
+        }
+
+        return weights;
     }
 }

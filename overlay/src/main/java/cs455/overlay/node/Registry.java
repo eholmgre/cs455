@@ -8,6 +8,7 @@ import cs455.overlay.util.Overlay;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -177,6 +178,10 @@ public class Registry implements Node {
                 + " (" + info + "). " + registerCount + " nodes registered.");
     }
 
+    private void setupOverlay() {
+
+    }
+
 
     @Override
     public void onEvent(Event event) {
@@ -225,17 +230,65 @@ public class Registry implements Node {
         while (getState() != RegistryState.EXITING) {
             try {
 
-                String command = input.readLine();
+                String line = input.readLine();
+                String[] command = line.split(" ");
 
-                if (command.toLowerCase().equals("exit")) {
+                if (command[0].equals("exit")) {
+                    if (getState() != RegistryState.REGISTRATION) {
+                        System.out.println("It's too late for that now");
+                        continue;
+                    }
+                    // probably ought to tell the messiging nodes we're going down
                     setState(RegistryState.EXITING);
                     helperThread.interrupt();
                     break;
+                } else if (command[0].equals("list-messaging-nodes")) {
+                    // list dem nodes
+
+                } else if (command[0].equals("list-weights")) {
+                    // list dem weights
+
+                } else if (command[0].equals("setup-overlay")) {
+                    boolean badArg = false;
+                    if (command.length != 2) {
+                        badArg = true;
+                    }
+                    int numConnections = 0;
+                    try {
+                        numConnections = Integer.parseInt(command[1]);
+                    } catch (NumberFormatException e) {
+                        badArg = true;
+                    }
+
+                    if (numConnections < 2) {
+                        badArg = true;
+                    }
+
+                    if (badArg) {
+                        System.out.println("usage: setup-overlay number-of-connections (integer >= 2)");
+                        continue;
+                    }
+
+                    setState(RegistryState.CREATE_OVERLAY);
+
+                    setupOverlay();
+
+                    // do more stuff
+                } else if (command[0].equals("send-overlay-link-weights")) {
+                    // send dem weights
+                } else {
+                    System.out.println("Invalid command. valid commands are: \n"
+                            + "\tlist-messaging-nodes\n"
+                            + "\tlist-weights\n"
+                            + "\tsetup-overlay number-of-connections (integer >= 2\n"
+                            + "\tsend-overlay-link-weights\n"
+                            + "\texit");
+                    continue;
                 }
             } catch (IOException e) {
                 System.err.println("Error: IOException while reading user input");
                 System.err.println(e.getMessage());
-                break;
+                continue;
             }
         }
 
