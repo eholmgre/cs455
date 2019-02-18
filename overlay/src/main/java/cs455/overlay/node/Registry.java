@@ -8,38 +8,20 @@ import cs455.overlay.util.Overlay;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.Array;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class Registry implements Node {
 
     protected class RegistryHelperThread implements Runnable {
 
-        private volatile boolean stopped;
-
-        private synchronized boolean beenStopped() {
-            return stopped;
-        }
-
-        public synchronized void stop() {
-            stopped = true;
-        }
-
-        private synchronized Registry.RegistryState getState() {
-            return registryState;
-        }
-
-        public RegistryHelperThread() {
-            stopped = false;
-        }
-
         @Override
         public void run() {
             System.out.println("Registry helper thread starting.");
-            while (!beenStopped()) {
+            while (getState() != RegistryState.EXITING) {
                 try {
                     Event e = eventQueue.take();
 
@@ -111,25 +93,28 @@ public class Registry implements Node {
 
         int connectioID = e.getConnectionId();
 
+        if (getState() != RegistryState.REGISTRATION) {
+            success = false;
+            info = "Registration period is over. ";
+        }
+
         if (!e.getIp().equals(e.getOrigin())) {
             // Error: request origin and ip do not match
             success = false;
-            info = "Request ip field does not match request origin";
+            info += "Request ip field does not match request origin. ";
         }
 
         if (overlay.inNodes(requestId)) {
             success = false;
+            info += "Node has already been registered. ";
         }
-
-        System.out.println("Received registration request from " + requestId
-                + ". Registration " + (success ? "successful." : "failed (" + info + ")."));
-
-        int registerCount = overlay.getCount();
 
         if (success) {
             info = "Welcome aboard";
             overlay.addNode(e.getIp(), e.getPort(), connectioID);
         }
+
+        int registerCount = overlay.getCount();
 
         RegisterResponse response = new RegisterResponse(success, info, registerCount, "localhost", connectioID);
 
@@ -157,9 +142,6 @@ public class Registry implements Node {
             info = "Request ip field does not match request origin";
         }
 
-        System.out.println("Received deregistration request from " + requestId
-                + ". Deregistration " + (success ? "successful." : "failed (" + info + ")."));
-
         if (success) {
             info = "well, bye";
 
@@ -178,7 +160,34 @@ public class Registry implements Node {
                 + " (" + info + "). " + registerCount + " nodes registered.");
     }
 
-    private void setupOverlay() {
+    private void setupOverlay(int connectionRequirement) throws IOException{
+        ArrayList<String []> connections = overlay.generateOverlay(connectionRequirement);
+
+        HashMap<String, String> nodeLists = new HashMap<>();
+        HashMap<String, Integer> nodeNums = new HashMap<>();
+
+        for (String []con : connections) {
+            if (nodeLists.containsKey(con[0])) {
+                String curList = nodeLists.get(con[0]);
+                int curCount = nodeNums.get(con[0]);
+                curList += "," + con[1];
+                nodeLists.replace(con[0], curList);
+                nodeNums.replace(con[0], ++curCount);
+            } else {
+                nodeLists.put(con[0], con[1]);
+                nodeNums.put(con[0], 1);
+            }
+        }
+
+        for (String []node : overlay.getNodes()) {
+            String nodeId = node[0] + ":" + node[1];
+            int connectionId = overlay.getConnectionId(nodeId);
+
+            connectionManager.sendMessage(connectionId, new MessagingNodesList(nodeNums.get(nodeId), nodeLists.get(nodeId), "localhost", -1));
+        }
+    }
+
+    private void sendWeights() {
 
     }
 
@@ -242,11 +251,26 @@ public class Registry implements Node {
                     setState(RegistryState.EXITING);
                     helperThread.interrupt();
                     break;
+
                 } else if (command[0].equals("list-messaging-nodes")) {
-                    // list dem nodes
+                    System.out.println(overlay.getCount() + " currently registered nodes:\n\t(ip)\t\t\t(port)");
+                    for (String[] node : overlay.getNodes()) {
+                        System.out.println("\t" + node[0] + "\t" + node[1]);
+                    }
 
                 } else if (command[0].equals("list-weights")) {
-                    // list dem weights
+                    ArrayList<String[]> cons = overlay.getConnectionWeights();
+
+                    if (cons == null) {
+                        System.out.println("Weights have not yet been generated or new connections have been added.\n"
+                                + "\tYou need to call send-overlay-link-weights first");
+                        continue;
+                    }
+
+                    System.out.println("connection weights");
+                    for (String[] con : cons) {
+                        System.out.println("\t" + con[0] + " --- " + con[1] + " --- " + con[2]);
+                    }
 
                 } else if (command[0].equals("setup-overlay")) {
                     boolean badArg = false;
@@ -271,16 +295,39 @@ public class Registry implements Node {
 
                     setState(RegistryState.CREATE_OVERLAY);
 
-                    setupOverlay();
+                    setupOverlay(numConnections);
 
-                    // do more stuff
+                    // todo: do more stuff
+
                 } else if (command[0].equals("send-overlay-link-weights")) {
-                    // send dem weights
+                    sendWeights();
+
+                    // todo: do more stuff
+
+                } else if (command[0].equals("start")) {
+                    boolean badArg = false;
+                    if (command.length != 2) {
+                        badArg = true;
+                    }
+                    int numRounds = 0;
+                    try {
+                        numRounds = Integer.parseInt(command[1]);
+                    } catch (NumberFormatException e) {
+                        badArg = true;
+                    }
+
+                    if (badArg) {
+                        System.out.println("usage: setup-overlay number-of-connections (integer >= 2)");
+                        continue;
+                    }
+
+                    setState(RegistryState.TASK_STARTED);
+
                 } else {
                     System.out.println("Invalid command. valid commands are: \n"
                             + "\tlist-messaging-nodes\n"
                             + "\tlist-weights\n"
-                            + "\tsetup-overlay number-of-connections (integer >= 2\n"
+                            + "\tsetup-overlay number-of-connections (integer >= 2)\n"
                             + "\tsend-overlay-link-weights\n"
                             + "\texit");
                     continue;
@@ -295,7 +342,7 @@ public class Registry implements Node {
 
         try {
             tcpServer.stop();
-            helper.stop();
+            helperThread.interrupt();
 
             serverThread.join();
             helperThread.join();
@@ -307,8 +354,6 @@ public class Registry implements Node {
             System.err.println(e.getMessage());
             return;
         }
-
-
     }
 
     public static void main(String[] args) {

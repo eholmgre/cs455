@@ -65,6 +65,17 @@ public class EventFactory {
         return new DeregisterResponse(success, numberRegistered, info, origin, connectionId);
     }
 
+    private MessagingNodesList buildMessageingNodesList(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int numNodes = messageDataStream.readInt();
+
+        int nodeListLength = messageDataStream.readInt();
+        byte []nodeListBytes = new byte[nodeListLength];
+        messageDataStream.readFully(nodeListBytes);
+        String nodeList = new String(nodeListBytes);
+
+        return new MessagingNodesList(numNodes, nodeList, origin, connectionId);
+    }
+
     public Event createEvent(byte[] msg, String origin, int connectionId) throws IOException {
         Event message;
 
@@ -86,6 +97,9 @@ public class EventFactory {
                 break;
             case DEREGISTER_RESPONSE:
                 message = buildDeregisterResponse(messageDataStream, origin, connectionId);
+                break;
+            case MESSAGING_NODES_LIST:
+                message = buildMessageingNodesList(messageDataStream, origin, connectionId);
                 break;
             default:
                 throw new IOException("unknown message enum - how did you even manage that?");

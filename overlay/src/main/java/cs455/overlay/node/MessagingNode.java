@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 
@@ -34,15 +35,17 @@ public class MessagingNode implements Node {
 
     private NodeState nodeState;
 
-    private ConnectionManager connections;
+    private ConnectionManager connectionManager;
 
     private LinkedBlockingQueue<Event> eventQueue;
+
+    private HashMap<String, Integer> connectionLookup;
 
 
     public MessagingNode(String[] args) {
         progArgs = args;
         nodeState = NodeState.REGISTERING;
-        connections = new ConnectionManager(this);
+        connectionManager = new ConnectionManager(this);
         eventQueue = new LinkedBlockingQueue<>();
     }
 
@@ -77,11 +80,15 @@ public class MessagingNode implements Node {
                         case DEREGISTER_RESPONSE:
                             handleDeregisterResponse((DeregisterResponse) e);
                             break;
+                        case MESSAGING_NODES_LIST:
+                            handleMessagingNodesList((MessagingNodesList) e);
 
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted");
                     break;
+                } catch (IOException e) {
+                    System.err.println("IOError in helper thread: " + e.getMessage());
                 }
             }
 
@@ -94,6 +101,34 @@ public class MessagingNode implements Node {
         eventQueue.offer(event);
     }
 
+    private void handleMessagingNodesList(MessagingNodesList nodesList) throws IOException{
+        connectionLookup = new HashMap<>();
+
+        int numNodes = nodesList.getNumNodes();
+        String nodeList = nodesList.getNodeList();
+        String []connections = nodeList.split(",");
+
+        if (connections.length != numNodes) {
+            System.err.println("Received bad message nodes list from registry.");
+            return;
+        }
+
+        for (String con : connections) {
+            String []conInfo = con.split(":");
+            if (conInfo.length != 2) {
+                System.err.println("Received bad message nodes list from registry.");
+                return;
+            }
+
+            // todo : figure out how to store connections in messaging node
+            int conID = connectionManager.newConnection(conInfo[0], Integer.parseInt(conInfo[1]));
+            connectionLookup.put(conInfo[0] + ":" + conInfo[1], conID);
+        }
+
+        System.out.println("Connected to " + connectionLookup.size() + " peers.");
+
+    }
+
     private void handleDeregisterResponse(DeregisterResponse response) {
         System.out.println("Deregistration from registry " + (response.getSuccess() ? "successful" : "failed") + ". ("
                 + response.getInfo() + "). " + response.getNumberRegistered() + " nodes currently registered on registry.");
@@ -103,9 +138,8 @@ public class MessagingNode implements Node {
     private void handleRegisterResponse(RegisterResponse response) {
         if (response.getSuccess()) {
             System.out.println("Successfully registered to registry at " + response.getOrigin() + ". "
-                    + response.getRegisterCount() + " other nodes registered at this time.");
+                    + response.getRegisterCount() + " nodes registered at this time.");
 
-            //TODO: maybe synchronize?
             setState(NodeState.REGISTERED);
 
         } else {
@@ -130,7 +164,7 @@ public class MessagingNode implements Node {
             registryAddress = progArgs[0];
             registryPort = Integer.parseInt(progArgs[1]);
 
-            registryID = connections.newConnection(registryAddress, registryPort);
+            registryID = connectionManager.newConnection(registryAddress, registryPort);
         } catch (IOException e) {
             System.err.println("Error: could not newConnection to registry on " + registryAddress + ":" + registryPort);
             System.err.println(e.getMessage());
@@ -139,7 +173,7 @@ public class MessagingNode implements Node {
 
 
         try {
-            tcpServer = new TCPServerThread(connections, this);
+            tcpServer = new TCPServerThread(connectionManager, this);
             myPort = tcpServer.getPort();
             myIP = InetAddress.getLocalHost().getHostAddress();
 
@@ -148,7 +182,7 @@ public class MessagingNode implements Node {
 
             System.out.println("Attempting to register with registry at " + registryAddress + ":" + registryPort);
 
-            connections.sendMessage(registryID, new RegisterRequest(myIP, myPort, "localhost", -1));
+            connectionManager.sendMessage(registryID, new RegisterRequest(myIP, myPort, "localhost", -1));
 
         } catch (IOException e) {
             System.err.println(e.getMessage());
@@ -165,18 +199,24 @@ public class MessagingNode implements Node {
         /* Command loop */
 
         BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
-        while (nodeState != NodeState.EXITING) {
+        while (getState() != NodeState.EXITING) {
             try {
 
                 String command = input.readLine();
 
-                if (command.toLowerCase().equals("exit") || command.toLowerCase().equals("deregister")) {
+                if (command.equals("exit-overlay")) {
                     setState(NodeState.DEREGISTERING);
                     DeregisterRequest request = new DeregisterRequest(myIP, myPort, "localhost", -1);
-                    connections.sendMessage(registryID, request);
+                    connectionManager.sendMessage(registryID, request);
                     System.out.println("Send deregistration request, waiting 3 seconds for response");
                     Thread.sleep(3000);
                     break;
+                } else if (command.equals("print-shortest-path")) {
+                    // print dat path
+                } else {
+                    System.out.println("Invalid command. Valid commands are:\n"
+                            + "\tprint-shortest-path\n"
+                            + "\texit-overlay");
                 }
             } catch (IOException e) {
                 System.err.println("Error: IOException while reading user input " + e.getMessage());

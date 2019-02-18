@@ -19,7 +19,7 @@ public class Overlay {
         String ip;
         int port;
         int connectionId;
-        ArrayList<String> connections;
+        ArrayList<String> connections; // could just be a counter at this point
 
         public MessageNode(String id, String ip, int port, int connectionId) {
             this.id = id;
@@ -66,6 +66,16 @@ public class Overlay {
         throw new NoSuchElementException("getIp: " + id + " not found in overlay");
     }
 
+    public int getConnectionId(String id) throws NoSuchElementException {
+        for (MessageNode node : nodes) {
+            if (node.id.equals(id)) {
+                return node.connectionId;
+            }
+        }
+
+        throw new NoSuchElementException("getIp: " + id + " not found in overlay");
+    }
+
     public boolean inNodes(String id) {
         for (MessageNode node : nodes) {
             if (node.id.equals(id)) {
@@ -76,7 +86,7 @@ public class Overlay {
         return false;
     }
 
-    public ArrayList<String []> getNodeInfo() {
+    public ArrayList<String []> getNodes() {
         ArrayList<String []> nodeInfo = new ArrayList<>();
 
         for (MessageNode node : nodes) {
@@ -142,4 +152,20 @@ public class Overlay {
 
         return weights;
     }
+
+    public ArrayList<String []> getConnectionWeights() {
+        ArrayList<String []> weightList = new ArrayList<>();
+
+        if (weights == null || connections ==null) {
+            return null;
+        }
+
+        for (int i = 0; i < weights.size(); ++i) {
+            String []con = connections.get(i);
+            weightList.add(new String[] {con[0], Integer.toString(weights.get(i)), con[1]});
+        }
+
+        return weightList;
+    }
+
 }
