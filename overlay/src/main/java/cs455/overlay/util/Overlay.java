@@ -2,6 +2,7 @@ package cs455.overlay.util;
 
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.NoSuchElementException;
 import java.util.Random;
 
@@ -90,9 +91,12 @@ public class Overlay {
             throw new IllegalArgumentException("Invalid connection requirement.");
         }
 
+        ArrayList<MessageNode> nodesShuffle = new ArrayList<>(nodes);
+        Collections.shuffle(nodesShuffle);
+
         weights = null;
 
-        for (MessageNode node : nodes) {
+        for (MessageNode node : nodesShuffle) {
             node.connections = new ArrayList<>();
         }
 
@@ -104,19 +108,19 @@ public class Overlay {
         for (int i = 0; i < n; i++) {
             for (int m = 1; m < (k / 2) + 1; ++m) {
                 int j = (i + m) % n;
-                nodes.get(i).connections.add(nodes.get(j).id);
-                nodes.get(j).connections.add(nodes.get(i).id);
+                nodesShuffle.get(i).connections.add(nodesShuffle.get(j).id);
+                nodesShuffle.get(j).connections.add(nodesShuffle.get(i).id);
 
-                connections.add(new String[] {nodes.get(i).id, nodes.get(j).id});
+                connections.add(new String[] {nodesShuffle.get(i).id, nodesShuffle.get(j).id});
             }
 
             if (k % 2 == 1 && i < n / 2) {
                 int j = (i + (n / 2)) % n;
 
-                nodes.get(i).connections.add(nodes.get(j).id);
-                nodes.get(j).connections.add(nodes.get(i).id);
+                nodesShuffle.get(i).connections.add(nodesShuffle.get(j).id);
+                nodesShuffle.get(j).connections.add(nodesShuffle.get(i).id);
 
-                connections.add(new String[] {nodes.get(i).id, nodes.get(j).id});
+                connections.add(new String[] {nodesShuffle.get(i).id, nodesShuffle.get(j).id});
             }
         }
 
