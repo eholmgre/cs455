@@ -147,6 +147,7 @@ public class MessagingNode implements Node {
         @Override
         public void run() {
             try {
+                System.out.println("Starting " + numRounds + " rounds of 5 messages each.");
                 for (int i = 0; i < numRounds; ++i) {
                     for (int j = 0; j < 5; ++j) {
                         String dest = overlay.getRandomNode();
@@ -161,9 +162,7 @@ public class MessagingNode implements Node {
                     }
                 }
 
-                System.out.println("Sent " + numRounds + " of 5 messages each");
-
-                System.out.println("sent " + getSentTotal() + ", rcvd " + getRcvdTotal());
+                System.out.println("Sent " + getSentCount()+ " messages");
 
                 setState(NodeState.TASK_COMPLETE);
                 // todo: probably best not to replace registry with connectionId 0
