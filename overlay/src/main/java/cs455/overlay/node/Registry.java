@@ -47,7 +47,7 @@ public class Registry implements Node {
     }
 
     private enum RegistryState {
-        REGISTRATION, CREATE_OVERLAY, TASK_STARTED, PULL_TRAFFIC, PRINT_STATS, EXITING
+        REGISTRATION, CREATE_OVERLAY, SEND_WEIGHTS, TASK_STARTED, PULL_TRAFFIC, PRINT_STATS, EXITING
     }
 
     private String[] progArgs;
@@ -160,13 +160,14 @@ public class Registry implements Node {
                 + " (" + info + "). " + registerCount + " nodes registered.");
     }
 
-    private void setupOverlay(int connectionRequirement) throws IOException{
-        ArrayList<String []> connections = overlay.generateOverlay(connectionRequirement);
+    private void setupOverlay(int connectionRequirement) throws IOException {
+        setState(RegistryState.CREATE_OVERLAY);
+        ArrayList<String[]> connections = overlay.generateOverlay(connectionRequirement);
 
         HashMap<String, String> nodeLists = new HashMap<>();
         HashMap<String, Integer> nodeNums = new HashMap<>();
 
-        for (String []con : connections) {
+        for (String[] con : connections) {
             if (nodeLists.containsKey(con[0])) {
                 String curList = nodeLists.get(con[0]);
                 int curCount = nodeNums.get(con[0]);
@@ -179,7 +180,7 @@ public class Registry implements Node {
             }
         }
 
-        for (String []node : overlay.getNodes()) {
+        for (String[] node : overlay.getNodes()) {
             String nodeId = node[0] + ":" + node[1];
             int connectionId = overlay.getConnectionId(nodeId);
 
@@ -187,7 +188,17 @@ public class Registry implements Node {
         }
     }
 
-    private void sendWeights() {
+    private void sendWeights() throws IOException {
+        setState(RegistryState.SEND_WEIGHTS);
+        overlay.generateWeights();
+
+        ArrayList<String[]> weights = overlay.getConnectionWeights();
+
+        connectionManager.broadcast(new LinkWeights(weights.size(), weights, "localhost", -1));
+    }
+
+    private void taskStart(int numRounds) {
+        setState(RegistryState.TASK_STARTED);
 
     }
 
@@ -259,17 +270,18 @@ public class Registry implements Node {
                     }
 
                 } else if (command[0].equals("list-weights")) {
-                    ArrayList<String[]> cons = overlay.getConnectionWeights();
+                    if (getState() != RegistryState.SEND_WEIGHTS) {
 
-                    if (cons == null) {
                         System.out.println("Weights have not yet been generated or new connections have been added.\n"
                                 + "\tYou need to call send-overlay-link-weights first");
                         continue;
                     }
 
+                    ArrayList<String[]> cons = overlay.getConnectionWeights();
+
                     System.out.println("connection weights");
                     for (String[] con : cons) {
-                        System.out.println("\t" + con[0] + " --- " + con[1] + " --- " + con[2]);
+                        System.out.println("\t" + con[0] + "\t" + con[1] + "\t" + con[2]);
                     }
 
                 } else if (command[0].equals("setup-overlay")) {
@@ -293,11 +305,8 @@ public class Registry implements Node {
                         continue;
                     }
 
-                    setState(RegistryState.CREATE_OVERLAY);
-
                     setupOverlay(numConnections);
 
-                    // todo: do more stuff
 
                 } else if (command[0].equals("send-overlay-link-weights")) {
                     sendWeights();
@@ -321,7 +330,9 @@ public class Registry implements Node {
                         continue;
                     }
 
-                    setState(RegistryState.TASK_STARTED);
+                    taskStart(numRounds);
+
+                    //setState(RegistryState.TASK_STARTED);
 
                 } else {
                     System.out.println("Invalid command. valid commands are: \n"

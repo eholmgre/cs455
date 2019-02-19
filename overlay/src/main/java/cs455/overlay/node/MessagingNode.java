@@ -9,7 +9,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.NoSuchElementException;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -87,12 +87,17 @@ public class MessagingNode implements Node {
                         case MESSAGING_NODE_HANDSHAKE:
                             handleMessagingNodeHandshake((MessagingNodeHandshake) e);
                             break;
+                        case LINK_WEIGHTS:
+                            handleLinkWeights((LinkWeights) e);
+                            break;
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted");
                     break;
                 } catch (IOException e) {
                     System.err.println("IOError in helper thread: " + e.getMessage());
+                } catch (Exception e) {
+                    System.err.println("General exception in helper thread " + e.getMessage());
                 }
             }
 
@@ -104,7 +109,41 @@ public class MessagingNode implements Node {
         eventQueue.offer(event);
     }
 
+    private void handleLinkWeights(LinkWeights e) throws Exception{
+        setState(NodeState.ROUTING);
+
+        int numWeights = e.getNumWeights();
+
+        ArrayList<String []> weights = e.getWeights();
+
+        if (numWeights != weights.size()) {
+            throw new Exception("weights size does not match numWeights");
+        }
+
+        for (String []w : weights) {
+            // w has form ["node1:port", "node2:port", weight ]
+            String node1 = w[0];
+            String node2 = w[1];
+            int weight = Integer.parseInt(w[2]);
+
+            if (! overlay.inOverlay(node1)) {
+                overlay.addNode(node1);
+            }
+
+            if (! overlay.inOverlay(node2)) {
+                overlay.addNode(node2);
+            }
+
+            overlay.addEdge(node1, node2, weight);
+
+        }
+
+        System.out.println("Received weights list. Processed " + numWeights + " edges between " + overlay.size() + " nodes.");
+
+    }
+
     private void handleMessagingNodeHandshake(MessagingNodeHandshake handshake) throws IOException {
+        setState(NodeState.CONNECTING);
         String ip = handshake.getIp();
         int port = handshake.getPort();
 
@@ -114,7 +153,7 @@ public class MessagingNode implements Node {
 
         try {
             overlay.addConnection(nodeId, connectionManager.getConnectionId(nodeId));
-            System.out.println("Connected with " + nodeId + ". Now connected with " + overlay.numConnected() + " nodes.");
+            System.out.println("Incoming connection from " + nodeId + ". Now connected with " + overlay.numConnected() + " nodes.");
         } catch (NoSuchElementException e) {
             System.out.println("Handshake error, no connection with this node");
         }
@@ -144,7 +183,7 @@ public class MessagingNode implements Node {
             int conID = connectionManager.newConnection(conInfo[0], Integer.parseInt(conInfo[1]));
             overlay.addConnection(nodeId, conID);
             connectionManager.sendMessage(conID, new MessagingNodeHandshake(myIP, myPort, "localhost", -1));
-            System.out.println("Connected with "+ nodeId + ". Now connected with " + overlay.numConnected() + " nodes.");
+            System.out.println("Outgoing connection to "+ nodeId + ". Now connected with " + overlay.numConnected() + " nodes.");
         }
 
 

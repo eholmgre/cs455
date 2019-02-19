@@ -1,9 +1,7 @@
 package cs455.overlay.events;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
 
 public class EventFactory {
     // Comrades, this is _our_ instance!
@@ -87,6 +85,21 @@ public class EventFactory {
         return new MessagingNodeHandshake(ipString, port, origin, connectionId);
     }
 
+    private LinkWeights buildLinkWeights(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int numWeights = messageDataStream.readInt();
+
+        ArrayList<String []> weights = new ArrayList<>();
+
+        for (int i = 0; i < numWeights; ++i) {
+            int linkInfoSize = messageDataStream.readInt();
+            byte []linkInfoBytes = new byte[linkInfoSize];
+            messageDataStream.readFully(linkInfoBytes);
+            weights.add(new String(linkInfoBytes).split(" "));
+        }
+
+        return new LinkWeights(numWeights, weights, origin, connectionId);
+    }
+
     public Event createEvent(byte[] msg, String origin, int connectionId) throws IOException {
         Event message;
 
@@ -114,6 +127,9 @@ public class EventFactory {
                 break;
             case MESSAGING_NODE_HANDSHAKE:
                 message = buildMessagingNodeHandshake(messageDataStream, origin, connectionId);
+                break;
+            case LINK_WEIGHTS:
+                message = buildLinkWeights(messageDataStream, origin, connectionId);
                 break;
             default:
                 throw new IOException("unknown message enum - how did you even manage that?");

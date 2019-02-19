@@ -137,7 +137,7 @@ public class Overlay {
         return connections;
     }
 
-    public ArrayList<Integer> generateWeights() {
+    public void generateWeights() {
         if (connections == null) {
             System.out.println("you need to generate connections first.");
         }
@@ -149,20 +149,19 @@ public class Overlay {
         for (int i = 0; i < connections.size(); ++i) {
             weights.add(1 + random.nextInt(9));
         }
-
-        return weights;
     }
 
     public ArrayList<String []> getConnectionWeights() {
         ArrayList<String []> weightList = new ArrayList<>();
 
         if (weights == null || connections ==null) {
+            //todo: exception would be more consistent
             return null;
         }
 
         for (int i = 0; i < weights.size(); ++i) {
             String []con = connections.get(i);
-            weightList.add(new String[] {con[0], Integer.toString(weights.get(i)), con[1]});
+            weightList.add(new String[] {con[0], con[1], Integer.toString(weights.get(i))});
         }
 
         return weightList;

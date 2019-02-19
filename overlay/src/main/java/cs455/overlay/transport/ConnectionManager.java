@@ -109,6 +109,12 @@ public class ConnectionManager {
         throw new NoSuchElementException("Error: no connection " + connectionID);
     }
 
+    public void broadcast(Event message) throws IOException {
+        for (Connection c : connections) {
+            sendMessage(c.identifier, message);
+        }
+    }
+
     public void closeConnection(int id) throws IOException, InterruptedException {
         synchronized (this) {
             for (Iterator<Connection> i = connections.iterator(); i.hasNext(); ) {
