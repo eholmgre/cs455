@@ -258,7 +258,10 @@ public class MessagingNode implements Node {
 
     @Override
     public void onEvent(Event event) {
-        eventQueue.offer(event);
+        boolean succ = eventQueue.offer(event);
+        if (! succ) {
+            System.out.println("Unable to add event to event queue " + eventQueue.size());
+        }
     }
 
     private void handlePullTrafficSummary(PullTrafficSummaries message) throws IOException{
