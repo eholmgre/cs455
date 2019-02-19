@@ -86,4 +86,13 @@ public class SubOverlay {
         return getNode(nodeId).connected;
 
     }
+
+    public void printOverlay() {
+        for (Node n : nodes) {
+            System.out.println("\t" + n.nodeId + " " + n.connected);
+            for (Edge e : n.connections){
+                System.out.println("\t\t|--> " + e.source + " " + e.weight);
+            }
+        }
+    }
 }

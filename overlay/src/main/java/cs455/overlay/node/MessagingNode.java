@@ -139,6 +139,7 @@ public class MessagingNode implements Node {
         }
 
         System.out.println("Received weights list. Processed " + numWeights + " edges between " + overlay.size() + " nodes.");
+        //overlay.printOverlay();
 
     }
 
@@ -265,6 +266,10 @@ public class MessagingNode implements Node {
                 String command = input.readLine();
 
                 if (command.equals("exit-overlay")) {
+                    if (getState() != NodeState.REGISTERED) {
+                        System.out.println("Can't deregister now.");
+                        continue;
+                    }
                     setState(NodeState.DEREGISTERING);
                     DeregisterRequest request = new DeregisterRequest(myIP, myPort, "localhost", -1);
                     connectionManager.sendMessage(registryID, request);

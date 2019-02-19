@@ -161,8 +161,15 @@ public class Registry implements Node {
     }
 
     private void setupOverlay(int connectionRequirement) throws IOException {
-        setState(RegistryState.CREATE_OVERLAY);
+        if (overlay.getCount() < 2) {
+            System.out.println("Not enough nodes have registered yet.");
+            return;
+        }
         ArrayList<String[]> connections = overlay.generateOverlay(connectionRequirement);
+
+        if (connections == null) {
+            return;
+        }
 
         HashMap<String, String> nodeLists = new HashMap<>();
         HashMap<String, Integer> nodeNums = new HashMap<>();
@@ -186,20 +193,23 @@ public class Registry implements Node {
 
             connectionManager.sendMessage(connectionId, new MessagingNodesList(nodeNums.get(nodeId), nodeLists.get(nodeId), "localhost", -1));
         }
+
+        setState(RegistryState.CREATE_OVERLAY);
     }
 
     private void sendWeights() throws IOException {
-        setState(RegistryState.SEND_WEIGHTS);
         overlay.generateWeights();
 
         ArrayList<String[]> weights = overlay.getConnectionWeights();
 
         connectionManager.broadcast(new LinkWeights(weights.size(), weights, "localhost", -1));
+
+        setState(RegistryState.SEND_WEIGHTS);
     }
 
     private void taskStart(int numRounds) {
-        setState(RegistryState.TASK_STARTED);
 
+        setState(RegistryState.TASK_STARTED);
     }
 
 
@@ -270,10 +280,11 @@ public class Registry implements Node {
                     }
 
                 } else if (command[0].equals("list-weights")) {
-                    if (getState() != RegistryState.SEND_WEIGHTS) {
+                    if (!(getState() == RegistryState.SEND_WEIGHTS || getState() == RegistryState.TASK_STARTED
+                            || getState() == RegistryState.PRINT_STATS || getState() == RegistryState.PULL_TRAFFIC)) {
 
-                        System.out.println("Weights have not yet been generated or new connections have been added.\n"
-                                + "\tYou need to call send-overlay-link-weights first");
+                        System.out.println("Weights have not yet been generated. "
+                                + "You need to call send-overlay-link-weights first");
                         continue;
                     }
 
@@ -285,23 +296,30 @@ public class Registry implements Node {
                     }
 
                 } else if (command[0].equals("setup-overlay")) {
+                    if (getState() != RegistryState.REGISTRATION) {
+                        System.out.println("The overlay has already been created.");
+                        continue;
+                    }
+
+                    int numConnections = 0;
+
                     boolean badArg = false;
                     if (command.length != 2) {
                         badArg = true;
-                    }
-                    int numConnections = 0;
-                    try {
-                        numConnections = Integer.parseInt(command[1]);
-                    } catch (NumberFormatException e) {
-                        badArg = true;
+                    } else {
+                        try {
+                            numConnections = Integer.parseInt(command[1]);
+                        } catch (NumberFormatException e) {
+                            badArg = true;
+                        }
                     }
 
-                    if (numConnections < 2) {
+                    if (numConnections < 1) {
                         badArg = true;
                     }
 
                     if (badArg) {
-                        System.out.println("usage: setup-overlay number-of-connections (integer >= 2)");
+                        System.out.println("usage: setup-overlay number-of-connections");
                         continue;
                     }
 
@@ -309,11 +327,19 @@ public class Registry implements Node {
 
 
                 } else if (command[0].equals("send-overlay-link-weights")) {
+                    if (getState() != RegistryState.CREATE_OVERLAY) {
+                        System.out.println("Overlay hasn't been created yet or weights have already been sent.");
+                        continue;
+                    }
                     sendWeights();
 
                     // todo: do more stuff
 
                 } else if (command[0].equals("start")) {
+                    if (getState() != RegistryState.SEND_WEIGHTS) {
+                        System.out.println("We are not ready to start, or have already started.");
+                        continue;
+                    }
                     boolean badArg = false;
                     if (command.length != 2) {
                         badArg = true;
@@ -331,8 +357,6 @@ public class Registry implements Node {
                     }
 
                     taskStart(numRounds);
-
-                    //setState(RegistryState.TASK_STARTED);
 
                 } else {
                     System.out.println("Invalid command. valid commands are: \n"
