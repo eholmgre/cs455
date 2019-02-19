@@ -234,7 +234,10 @@ public class MessagingNode implements Node {
                             handleTaskInitiate((TaskInitiate) e);
                             break;
                         case TASK_MESSAGE:
-                            taskMessageQueue.offer((TaskMessage) e);
+                            boolean succ = taskMessageQueue.offer((TaskMessage) e);
+                            if (! succ) {
+                                System.out.println("Could not add message to message queue " + taskMessageQueue.size());
+                            }
                             break;
                         case PULL_TRAFFIC_SUMMARY:
                             handlePullTrafficSummary((PullTrafficSummaries) e);
