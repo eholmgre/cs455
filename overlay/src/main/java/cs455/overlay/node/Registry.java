@@ -110,7 +110,7 @@ public class Registry implements Node {
         if (overlay.allComplete()) {
             try {
                 System.out.println("All nodes task complete, sleeping for 15 seconds to let all messages reach their destinations");
-                Thread.sleep(15000);
+                Thread.sleep(60000);
                 System.out.println("sending pull summaries");
 
                 connectionManager.broadcast(new PullTrafficSummaries("localhost", -1));
