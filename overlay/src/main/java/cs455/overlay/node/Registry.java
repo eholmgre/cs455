@@ -34,6 +34,9 @@ public class Registry implements Node {
                             break;
                         case TASK_COMPLETE:
                             handleTaskComplete((TaskComplete) e);
+                            break;
+                        case TRAFFIC_SUMMARY:
+                            handleTrafficSummary((TrafficSummary) e);
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted" + e.getMessage());
@@ -87,6 +90,18 @@ public class Registry implements Node {
         registryState = state;
     }
 
+    private void handleTrafficSummary(TrafficSummary message) throws IOException {
+        overlay.setSummary(message.getIp() + ":" + message.getPort(), message.getNumSent(), message.getNumRcvd(),
+                message.getNumRlyd(), message.getTotalSent(), message.getTotalRcvd());
+
+        if (overlay.allSummaries()) {
+            overlay.printSummaries();
+            //todo: make sure all stats reset
+
+            setState(RegistryState.REGISTRATION);
+        }
+    }
+
     private void handleTaskComplete(TaskComplete message) throws IOException {
         String nodeId = message.getIp() + ":" + message.getPort();
         overlay.setComplete(nodeId);
@@ -94,7 +109,7 @@ public class Registry implements Node {
         if (overlay.allComplete()) {
             try {
                 System.out.println("sleeping for 15 seconds to let all messages reach their destinations");
-                Thread.sleep(15);
+                Thread.sleep(15000);
                 System.out.println("sending pull summaries");
 
                 connectionManager.broadcast(new PullTrafficSummaries("localhost", -1));

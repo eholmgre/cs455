@@ -46,9 +46,9 @@ public class MessagingNode implements Node {
 
     private SubOverlay overlay;
 
-    private int receivedTotal;
+    private long receivedTotal;
 
-    private int sentTotal;
+    private long sentTotal;
 
     private int sentCount;
 
@@ -76,6 +76,10 @@ public class MessagingNode implements Node {
 
     private synchronized NodeState getState() {
         return nodeState;
+    }
+
+    private synchronized void setState(NodeState state) {
+        nodeState = state;
     }
 
     private synchronized void incRyldCount() {
@@ -110,16 +114,20 @@ public class MessagingNode implements Node {
         sentTotal += inc;
     }
 
-    private synchronized void setState(NodeState state) {
-        nodeState = state;
-    }
-
-    private synchronized int getRcvdTotal() {
+    private synchronized long getRcvdTotal() {
         return receivedTotal;
     }
 
-    private synchronized int getSentTotal() {
+    private synchronized long getSentTotal() {
         return sentTotal;
+    }
+
+    private synchronized void resetCounters() {
+        receivedTotal = 0;
+        sentTotal = 0;
+        rcvdCount = 0;
+        sentCount = 0;
+        ryldCount = 0;
     }
 
     private void printHelp() {
@@ -157,7 +165,7 @@ public class MessagingNode implements Node {
 
                 setState(NodeState.TASK_COMPLETE);
                 // todo: probably best not to replace registry with connectionId 0
-                //connectionManager.sendMessage(0, new TaskComplete(myIP, myPort, "localhost", -1));
+                connectionManager.sendMessage(0, new TaskComplete(myIP, myPort, "localhost", -1));
             } catch (IOException e) {
                 System.out.println("IOException in message creator thread" + e.getMessage());
             }
@@ -229,6 +237,7 @@ public class MessagingNode implements Node {
                             break;
                         case PULL_TRAFFIC_SUMMARY:
                             handlePullTrafficSummary((PullTrafficSummaries) e);
+                            break;
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted");
@@ -248,8 +257,15 @@ public class MessagingNode implements Node {
         eventQueue.offer(event);
     }
 
-    private void handlePullTrafficSummary(PullTrafficSummaries message) {
+    private void handlePullTrafficSummary(PullTrafficSummaries message) throws IOException{
         passerThread.interrupt();
+
+        connectionManager.sendMessage(0, new TrafficSummary(myIP, myPort, getSentCount(), getRcvdCount(),
+                getRyldCount(), getSentTotal(), getRcvdTotal(), "localhost", -1));
+
+        resetCounters();
+
+        setState(NodeState.REGISTERED);
     }
 
     private void handleTaskInitiate(TaskInitiate message) {

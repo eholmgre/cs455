@@ -139,6 +139,25 @@ public class EventFactory {
         return new PullTrafficSummaries(origin, connectionId);
     }
 
+    private TrafficSummary buildTrafficSummary(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int ipSize = messageDataStream.readInt();
+        byte []ipBytes = new byte[ipSize];
+        messageDataStream.readFully(ipBytes);
+        String ip = new String(ipBytes);
+
+        int port = messageDataStream.readInt();
+
+        int numSent = messageDataStream.readInt();
+        int numRcvd = messageDataStream.readInt();
+        int numRlyd = messageDataStream.readInt();
+
+        long totalSent = messageDataStream.readLong();
+        long totalRcvd = messageDataStream.readLong();
+
+        return new TrafficSummary(ip, port, numSent, numRcvd, numRlyd, totalSent, totalRcvd, origin, connectionId);
+
+    }
+
     public Event createEvent(byte[] msg, String origin, int connectionId) throws IOException {
         Event message;
 
@@ -181,6 +200,9 @@ public class EventFactory {
                 break;
             case PULL_TRAFFIC_SUMMARY:
                 message = buildPullTrafficSummary(origin, connectionId);
+                break;
+            case TRAFFIC_SUMMARY:
+                message = buildTrafficSummary(messageDataStream, origin, connectionId);
                 break;
             default:
                 throw new IOException("unknown message enum - how did you even manage that?");

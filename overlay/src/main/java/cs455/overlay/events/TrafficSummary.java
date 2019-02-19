@@ -1,5 +1,8 @@
 package cs455.overlay.events;
 
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 public class TrafficSummary implements Event {
@@ -10,13 +13,13 @@ public class TrafficSummary implements Event {
     private int numRcvd;
     private int numRlyd;
 
-    private int totalSent;
-    private int totalRcvd;
+    private long totalSent;
+    private long totalRcvd;
 
     private String origin;
     private int connectionId;
 
-    public TrafficSummary(String ip, int port, int numSent, int numRcvd, int numRlyd, int totalSent, int totalRcvd, String origin, int connectionId) {
+    public TrafficSummary(String ip, int port, int numSent, int numRcvd, int numRlyd, long totalSent, long totalRcvd, String origin, int connectionId) {
         this.ip = ip;
         this.port = port;
         this.numSent = numSent;
@@ -28,6 +31,33 @@ public class TrafficSummary implements Event {
         this.connectionId = connectionId;
     }
 
+    public String getIp() {
+        return ip;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public int getNumSent() {
+        return numSent;
+    }
+
+    public int getNumRcvd() {
+        return numRcvd;
+    }
+
+    public int getNumRlyd() {
+        return numRlyd;
+    }
+
+    public long getTotalSent() {
+        return totalSent;
+    }
+
+    public long getTotalRcvd() {
+        return totalRcvd;
+    }
 
     @Override
     public String getOrigin() {
@@ -46,6 +76,35 @@ public class TrafficSummary implements Event {
 
     @Override
     public byte[] getBytes() throws IOException {
-        return new byte[0];
+
+        byte []marshaledBytes = null;
+
+        ByteArrayOutputStream bOutStream = new ByteArrayOutputStream();
+        DataOutputStream dOutStream = new DataOutputStream(new BufferedOutputStream(bOutStream));
+
+        dOutStream.writeInt(getType().getTypeCode());
+
+        byte []ipBytes = ip.getBytes();
+
+        dOutStream.writeInt(ipBytes.length);
+        dOutStream.write(ipBytes);
+
+        dOutStream.writeInt(port);
+
+        dOutStream.writeInt(numSent);
+        dOutStream.writeInt(numRcvd);
+        dOutStream.writeInt(numRlyd);
+
+        dOutStream.writeLong(totalSent);
+        dOutStream.writeLong(totalRcvd);
+
+        dOutStream.flush();
+
+        marshaledBytes = bOutStream.toByteArray();
+
+        dOutStream.close();
+        bOutStream.close();
+
+        return marshaledBytes;
     }
 }

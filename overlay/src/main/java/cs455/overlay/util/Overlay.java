@@ -1,8 +1,6 @@
 package cs455.overlay.util;
 
 
-import cs455.overlay.node.Node;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.NoSuchElementException;
@@ -16,6 +14,23 @@ public class Overlay {
 
     private ArrayList<Integer> weights;
 
+    private class WorkSummary {
+        int numSent;
+        int numRcvd;
+        int numRlyd;
+
+        long totalSent;
+        long totalRcvd;
+
+        public WorkSummary(int numSent, int numRcvd, int numRlyd, long totalSent, long totalRcvd) {
+            this.numSent = numSent;
+            this.numRcvd = numRcvd;
+            this.numRlyd = numRlyd;
+            this.totalSent = totalSent;
+            this.totalRcvd = totalRcvd;
+        }
+    }
+
     private class MessageNode {
         String id;
         String ip;
@@ -24,6 +39,7 @@ public class Overlay {
         ArrayList<String> connections; // could just be a counter at this point
 
         boolean complete;
+        WorkSummary summary;
 
         public MessageNode(String id, String ip, int port, int connectionId) {
             this.id = id;
@@ -71,6 +87,7 @@ public class Overlay {
         throw new NoSuchElementException("can't set non-existant node complete");
     }
 
+    // todo: need to reset for next run
     public boolean allComplete() {
         for (MessageNode node : nodes) {
             if (! node.complete) {
@@ -79,6 +96,49 @@ public class Overlay {
         }
 
         return true;
+    }
+
+    public void setSummary(String nodeId, int numSent, int numRcvd, int numRlyd, long totalSent, long totalRcvd) {
+        for (MessageNode node : nodes) {
+            if (node.id.equals(nodeId)) {
+                node.summary = new WorkSummary(numSent, numRcvd, numRlyd, totalSent, totalRcvd);
+            }
+        }
+    }
+
+    public boolean allSummaries() {
+        for (MessageNode node : nodes) {
+            if (node.summary == null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void printSummaries() {
+        int numSentSum = 0;
+        int numRcvdSum = 0;
+        int numRlydSum = 0;
+
+        long totalSentSum = 0;
+        long totalRcvdSum = 0;
+
+        System.out.println("Node ID\tnumber sent\tnumber rcvd\tsum sent\tsum rcvd\tnum rlyd");
+
+        for (MessageNode node : nodes) {
+            numSentSum += node.summary.numSent;
+            numRcvdSum += node.summary.numRcvd;
+            numRlydSum += node.summary.numRlyd;
+
+            totalSentSum += node.summary.totalSent;
+            totalRcvdSum += node.summary.totalRcvd;
+
+            System.out.println(node.id + "\t" + node.summary.numSent + "\t" + node.summary.numRcvd + "\t" + node.summary.totalSent
+                    + "\t" + node.summary.totalRcvd + "\t" + node.summary.numRlyd);
+        }
+
+        System.out.println("Sum\t" + numSentSum + "\t" + numRcvdSum + "\t" + totalSentSum + "\t" + totalRcvdSum + "\t" + numRlydSum);
     }
 
     public String getIp(String id) throws NoSuchElementException {
