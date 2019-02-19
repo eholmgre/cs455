@@ -1,6 +1,8 @@
 package cs455.overlay.util;
 
 
+import cs455.overlay.node.Node;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.NoSuchElementException;
@@ -21,12 +23,15 @@ public class Overlay {
         int connectionId;
         ArrayList<String> connections; // could just be a counter at this point
 
+        boolean complete;
+
         public MessageNode(String id, String ip, int port, int connectionId) {
             this.id = id;
             this.ip = ip;
             this.port = port;
             this.connectionId = connectionId;
             connections = new ArrayList<>();
+            complete = false;
         }
     }
 
@@ -54,6 +59,26 @@ public class Overlay {
             connections = null;
             weights = null;
         }
+    }
+
+    public void setComplete(String nodeId) {
+        for (MessageNode node: nodes) {
+            if (node.id.equals(nodeId)) {
+                node.complete = true;
+                return;
+            }
+        }
+        throw new NoSuchElementException("can't set non-existant node complete");
+    }
+
+    public boolean allComplete() {
+        for (MessageNode node : nodes) {
+            if (! node.complete) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public String getIp(String id) throws NoSuchElementException {

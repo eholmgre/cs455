@@ -57,7 +57,7 @@ public class TCPReceiverThread implements Runnable{
                 parent.onEvent(messageFactory.createEvent(data, origin, connectionId));
 
             } catch (IOException e) { // includes SocketException
-                System.err.println("Error: exception in TCP thread for " + origin + ": " + e.getMessage());
+                System.err.println("Error: exception in TCP thread for " + origin + ": " + socket.getLocalPort() + " " + e.getMessage());
                 break;
             }
         }

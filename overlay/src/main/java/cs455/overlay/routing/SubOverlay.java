@@ -53,11 +53,13 @@ public class SubOverlay {
     private HashMap<String, ShortestPath> shortestPaths;
 
     private String myId;
+    private Random rand;
 
     public SubOverlay(String myId) {
         this.myId = myId;
         nodes = new ArrayList<>();
         shortestPaths = new HashMap<>();
+        rand = new Random();
     }
 
     public int numConnected() {
@@ -189,13 +191,15 @@ public class SubOverlay {
             if (p.destID.equals(myId)) {
                 continue;
             }
-            String prev = pred.get(p.destID);
-            while (! prev.equals(myId)) {
+
+            String prev = p.destID;
+
+            while (! prev.equals(myId)){
                 p.path.add(0, prev);
                 prev = pred.get(prev);
             }
 
-            p.path.add(0, myId);
+            // p.path.add(0, myId);
 
             p.dist = cost.get(p.destID);
 
@@ -231,11 +235,21 @@ public class SubOverlay {
         }
     }
 
-    public String[] getShortestPath(String nodeId) {
-        return (String []) shortestPaths.get(nodeId).path.toArray();
+    public ArrayList<String> getShortestPath(String nodeId) {
+        return shortestPaths.get(nodeId).path;
     }
 
     public int getCost(String nodeId) {
         return shortestPaths.get(nodeId).dist;
+    }
+
+    public String getRandomNode() {
+        int i = rand.nextInt(nodes.size());
+
+        if (nodes.get(i).isMe) {
+            i = (i + 1) % nodes.size();
+        }
+
+        return nodes.get(i).nodeId;
     }
 }

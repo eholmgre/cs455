@@ -102,7 +102,9 @@ public class ConnectionManager {
         for (Connection c : connections) {
             if (c.identifier == connectionID) {
                 byte []bytes = message.getBytes();
-                c.sender.sendData(bytes);
+                synchronized (c.sender) { //todo: figure out if this is a big deal
+                    c.sender.sendData(bytes);
+                }
                 return;
             }
         }

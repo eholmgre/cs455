@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
+import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 
 
@@ -41,7 +42,25 @@ public class MessagingNode implements Node {
 
     private LinkedBlockingQueue<Event> eventQueue;
 
+    private LinkedBlockingQueue<TaskMessage> taskMessageQueue;
+
     private SubOverlay overlay;
+
+    private int receivedTotal;
+
+    private int sentTotal;
+
+    private int sentCount;
+
+    private int rcvdCount;
+
+    private int ryldCount;
+
+    MessageCreator creator;
+    Thread creatorThread;
+
+    MessagePasser passer;
+    Thread passerThread;
 
 
     public MessagingNode(String[] args) {
@@ -49,18 +68,131 @@ public class MessagingNode implements Node {
         nodeState = NodeState.REGISTERING;
         connectionManager = new ConnectionManager(this);
         eventQueue = new LinkedBlockingQueue<>();
+        receivedTotal = 0;
+        sentTotal = 0;
+        rcvdCount = 0;
+        sentCount = 0;
     }
 
     private synchronized NodeState getState() {
         return nodeState;
     }
 
+    private synchronized void incRyldCount() {
+        ++ryldCount;
+    }
+
+    private synchronized int getRyldCount() {
+        return ryldCount;
+    }
+
+    private synchronized void incSendCount() {
+        ++sentCount;
+    }
+
+    private synchronized int getSentCount() {
+        return sentCount;
+    }
+
+    private synchronized void incRcvdCount() {
+        ++rcvdCount;
+    }
+
+    private synchronized int getRcvdCount() {
+        return rcvdCount;
+    }
+
+    private synchronized void updateRcvdTotal(int inc) {
+        receivedTotal += inc;
+    }
+
+    private synchronized void updateSendTotal(int inc) {
+        sentTotal += inc;
+    }
+
     private synchronized void setState(NodeState state) {
         nodeState = state;
     }
 
+    private synchronized int getRcvdTotal() {
+        return receivedTotal;
+    }
+
+    private synchronized int getSentTotal() {
+        return sentTotal;
+    }
+
     private void printHelp() {
         System.out.println("Usage: messageNode <registry address> <registry port>");
+    }
+
+    private class MessageCreator implements Runnable {
+
+        int numRounds;
+        Random rand;
+
+        public MessageCreator(int numRounds) {
+            this.numRounds = numRounds;
+            rand = new Random();
+        }
+
+        @Override
+        public void run() {
+            try {
+                for (int i = 0; i < numRounds; ++i) {
+                    for (int j = 0; j < 5; ++j) {
+                        String dest = overlay.getRandomNode();
+                        ArrayList<String> routeList = overlay.getShortestPath(dest);
+                        int payload = rand.nextInt();
+
+                        updateSendTotal(payload);
+                        incSendCount();
+
+                        connectionManager.sendMessage(connectionManager.getConnectionId(routeList.get(0)),
+                                new TaskMessage(routeList, payload, "localhost", -1));
+                    }
+                }
+
+                System.out.println("sent " + getSentTotal() + ", rcvd " + getRcvdTotal());
+
+                setState(NodeState.TASK_COMPLETE);
+                // todo: probably best not to replace registry with connectionId 0
+                //connectionManager.sendMessage(0, new TaskComplete(myIP, myPort, "localhost", -1));
+            } catch (IOException e) {
+                System.out.println("IOException in message creator thread" + e.getMessage());
+            }
+
+        }
+
+    }
+
+    private class MessagePasser implements Runnable {
+        @Override
+        public void run() {
+            String myId = myIP + ":" + myPort;
+            try {
+                while (true) {
+                    TaskMessage msg = taskMessageQueue.take();
+
+                    String hop = msg.peelLastHop();
+
+                    if (! hop.equals(myId)) {
+                        System.out.println("got wrong message...");
+                    } else if (msg.getRoute().size() == 0) {
+                        updateRcvdTotal(msg.getPayload());
+                        incRcvdCount();
+                    } else {
+                        connectionManager.sendMessage(connectionManager.getConnectionId(msg.getRoute().get(0)), msg);
+                        incRyldCount();
+                    }
+                }
+            } catch (InterruptedException e) {
+                System.out.println("Message passer interupted");
+            } catch (IOException e) {
+                System.out.println("IOException in message passer");
+            }
+
+        }
     }
 
     private class MessagingNodeHelper implements Runnable {
@@ -89,6 +221,14 @@ public class MessagingNode implements Node {
                         case LINK_WEIGHTS:
                             handleLinkWeights((LinkWeights) e);
                             break;
+                        case TASK_INITIATE:
+                            handleTaskInitiate((TaskInitiate) e);
+                            break;
+                        case TASK_MESSAGE:
+                            taskMessageQueue.offer((TaskMessage) e);
+                            break;
+                        case PULL_TRAFFIC_SUMMARY:
+                            handlePullTrafficSummary((PullTrafficSummaries) e);
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted");
@@ -106,6 +246,27 @@ public class MessagingNode implements Node {
     @Override
     public void onEvent(Event event) {
         eventQueue.offer(event);
+    }
+
+    private void handlePullTrafficSummary(PullTrafficSummaries message) {
+        passerThread.interrupt();
+    }
+
+    private void handleTaskInitiate(TaskInitiate message) {
+        int numRounds = message.getNumRounds();
+        taskMessageQueue = new LinkedBlockingQueue<>();
+
+        // todo: should probably be class fields so we can clean up later
+        creator = new MessageCreator(numRounds);
+        creatorThread = new Thread(creator);
+
+        passer = new MessagePasser();
+        passerThread = new Thread(passer);
+
+        creatorThread.start();
+        passerThread.start();
+
+        setState(NodeState.WORKING);
     }
 
     private void handleLinkWeights(LinkWeights e) throws Exception{

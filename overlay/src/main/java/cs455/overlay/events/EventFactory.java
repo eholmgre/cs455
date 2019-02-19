@@ -2,6 +2,7 @@ package cs455.overlay.events;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class EventFactory {
     // Comrades, this is _our_ instance!
@@ -100,6 +101,44 @@ public class EventFactory {
         return new LinkWeights(numWeights, weights, origin, connectionId);
     }
 
+    private TaskInitiate buildTaskInitiate(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int numRounds = messageDataStream.readInt();
+
+        return new TaskInitiate(numRounds, origin, connectionId);
+    }
+
+    private TaskMessage buildTaskMessage(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int payload = messageDataStream.readInt();
+
+        int numHops = messageDataStream.readInt();
+        String []route = new String[numHops];
+
+        for (int i = 0; i < numHops; ++i) {
+            int hopSize = messageDataStream.readInt();
+            byte []hopBytes = new byte[hopSize];
+            messageDataStream.readFully(hopBytes);
+            route[i] = new String(hopBytes);
+        }
+
+        ArrayList<String> routeList = new ArrayList<>(Arrays.asList(route));
+
+        return new TaskMessage(routeList, payload, origin, connectionId);
+    }
+
+    private TaskComplete buildTaskComplete(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int ipSize = messageDataStream.readInt();
+        byte []ipBytes = new byte[ipSize];
+        messageDataStream.readFully(ipBytes);
+        String ip = new String(ipBytes);
+        int port = messageDataStream.readInt();
+
+        return new TaskComplete(ip, port, origin, connectionId);
+    }
+
+    private PullTrafficSummaries buildPullTrafficSummary(String origin, int connectionId) {
+        return new PullTrafficSummaries(origin, connectionId);
+    }
+
     public Event createEvent(byte[] msg, String origin, int connectionId) throws IOException {
         Event message;
 
@@ -130,6 +169,18 @@ public class EventFactory {
                 break;
             case LINK_WEIGHTS:
                 message = buildLinkWeights(messageDataStream, origin, connectionId);
+                break;
+            case TASK_INITIATE:
+                message = buildTaskInitiate(messageDataStream, origin, connectionId);
+                break;
+            case TASK_MESSAGE:
+                message = buildTaskMessage(messageDataStream, origin, connectionId);
+                break;
+            case TASK_COMPLETE:
+                message = buildTaskComplete(messageDataStream, origin, connectionId);
+                break;
+            case PULL_TRAFFIC_SUMMARY:
+                message = buildPullTrafficSummary(origin, connectionId);
                 break;
             default:
                 throw new IOException("unknown message enum - how did you even manage that?");

@@ -32,6 +32,8 @@ public class Registry implements Node {
                         case DEREGISTER_REQUEST:
                             handleDeregisterRequest((DeregisterRequest) e);
                             break;
+                        case TASK_COMPLETE:
+                            handleTaskComplete((TaskComplete) e);
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted" + e.getMessage());
@@ -83,6 +85,24 @@ public class Registry implements Node {
 
     private synchronized void setState(RegistryState state) {
         registryState = state;
+    }
+
+    private void handleTaskComplete(TaskComplete message) throws IOException {
+        String nodeId = message.getIp() + ":" + message.getPort();
+        overlay.setComplete(nodeId);
+
+        if (overlay.allComplete()) {
+            try {
+                System.out.println("sleeping for 15 seconds to let all messages reach their destinations");
+                Thread.sleep(15);
+                System.out.println("sending pull summaries");
+
+                connectionManager.broadcast(new PullTrafficSummaries("localhost", -1));
+
+            } catch (InterruptedException e) {
+                System.out.println("interupted while waiting to send task complete.");
+            }
+        }
     }
 
     private void handleRegisterRequest(RegisterRequest e) throws IOException {
@@ -207,8 +227,8 @@ public class Registry implements Node {
         setState(RegistryState.SEND_WEIGHTS);
     }
 
-    private void taskStart(int numRounds) {
-
+    private void taskStart(int numRounds) throws IOException{
+        connectionManager.broadcast(new TaskInitiate(numRounds, "localhost", -1));
         setState(RegistryState.TASK_STARTED);
     }
 
@@ -280,7 +300,7 @@ public class Registry implements Node {
                     }
 
                 } else if (command[0].equals("list-weights")) {
-                    if (!(getState() == RegistryState.SEND_WEIGHTS || getState() == RegistryState.TASK_STARTED
+                    if (! (getState() == RegistryState.SEND_WEIGHTS || getState() == RegistryState.TASK_STARTED
                             || getState() == RegistryState.PRINT_STATS || getState() == RegistryState.PULL_TRAFFIC)) {
 
                         System.out.println("Weights have not yet been generated. "
@@ -306,7 +326,8 @@ public class Registry implements Node {
                     boolean badArg = false;
                     if (command.length != 2) {
                         badArg = true;
-                    } else {
+                    }
+                    else {
                         try {
                             numConnections = Integer.parseInt(command[1]);
                         } catch (NumberFormatException e) {
