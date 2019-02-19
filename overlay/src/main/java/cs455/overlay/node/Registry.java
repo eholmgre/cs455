@@ -332,8 +332,8 @@ public class Registry implements Node {
                             + "\texit");
                     continue;
                 }
-            } catch (IOException e) {
-                System.err.println("Error: IOException while reading user input");
+            } catch (Exception e) {
+                System.err.println("Error: Exception handling user input");
                 System.err.println(e.getMessage());
                 continue;
             }

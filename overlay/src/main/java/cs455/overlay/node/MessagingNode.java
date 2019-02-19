@@ -1,6 +1,7 @@
 package cs455.overlay.node;
 
 import cs455.overlay.events.*;
+import cs455.overlay.routing.SubOverlay;
 import cs455.overlay.transport.ConnectionManager;
 import cs455.overlay.transport.TCPServerThread;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 
@@ -39,7 +41,7 @@ public class MessagingNode implements Node {
 
     private LinkedBlockingQueue<Event> eventQueue;
 
-    private HashMap<String, Integer> connectionLookup;
+    private SubOverlay overlay;
 
 
     public MessagingNode(String[] args) {
@@ -47,6 +49,7 @@ public class MessagingNode implements Node {
         nodeState = NodeState.REGISTERING;
         connectionManager = new ConnectionManager(this);
         eventQueue = new LinkedBlockingQueue<>();
+        overlay = new SubOverlay();
     }
 
     private synchronized NodeState getState() {
@@ -66,8 +69,6 @@ public class MessagingNode implements Node {
         @Override
         public void run() {
 
-            System.out.println("Message node helper thread starting");
-
             while (getState() != NodeState.EXITING) {
                 try {
 
@@ -82,7 +83,10 @@ public class MessagingNode implements Node {
                             break;
                         case MESSAGING_NODES_LIST:
                             handleMessagingNodesList((MessagingNodesList) e);
-
+                            break;
+                        case MESSAGING_NODE_HANDSHAKE:
+                            handleMessagingNodeHandshake((MessagingNodeHandshake) e);
+                            break;
                     }
                 } catch (InterruptedException e) {
                     System.err.println("Helper thread interrupted");
@@ -92,7 +96,6 @@ public class MessagingNode implements Node {
                 }
             }
 
-            System.out.println("Message node helper thread exiting");
         }
     }
 
@@ -101,8 +104,24 @@ public class MessagingNode implements Node {
         eventQueue.offer(event);
     }
 
+    private void handleMessagingNodeHandshake(MessagingNodeHandshake handshake) throws IOException {
+        String ip = handshake.getIp();
+        int port = handshake.getPort();
+
+        String nodeId = ip + ":" + port;
+
+        connectionManager.setNodeId(handshake.getConnectionId(), nodeId);
+
+        try {
+            overlay.addConnection(nodeId, connectionManager.getConnectionId(nodeId));
+            System.out.println("Connected with " + nodeId + ". Now connected with " + overlay.numConnected() + " nodes.");
+        } catch (NoSuchElementException e) {
+            System.out.println("Handshake error, no connection with this node");
+        }
+    }
+
     private void handleMessagingNodesList(MessagingNodesList nodesList) throws IOException{
-        connectionLookup = new HashMap<>();
+        setState(NodeState.CONNECTING);
 
         int numNodes = nodesList.getNumNodes();
         String nodeList = nodesList.getNodeList();
@@ -120,12 +139,14 @@ public class MessagingNode implements Node {
                 return;
             }
 
-            // todo : figure out how to store connections in messaging node
+            String nodeId = conInfo[0] + ":" + conInfo[1];
+
             int conID = connectionManager.newConnection(conInfo[0], Integer.parseInt(conInfo[1]));
-            connectionLookup.put(conInfo[0] + ":" + conInfo[1], conID);
+            overlay.addConnection(nodeId, conID);
+            connectionManager.sendMessage(conID, new MessagingNodeHandshake(myIP, myPort, "localhost", -1));
+            System.out.println("Connected with "+ nodeId + ". Now connected with " + overlay.numConnected() + " nodes.");
         }
 
-        System.out.println("Connected to " + connectionLookup.size() + " peers.");
 
     }
 

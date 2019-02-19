@@ -65,7 +65,7 @@ public class EventFactory {
         return new DeregisterResponse(success, numberRegistered, info, origin, connectionId);
     }
 
-    private MessagingNodesList buildMessageingNodesList(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+    private MessagingNodesList buildMessagingNodesList(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
         int numNodes = messageDataStream.readInt();
 
         int nodeListLength = messageDataStream.readInt();
@@ -74,6 +74,17 @@ public class EventFactory {
         String nodeList = new String(nodeListBytes);
 
         return new MessagingNodesList(numNodes, nodeList, origin, connectionId);
+    }
+
+    private MessagingNodeHandshake buildMessagingNodeHandshake(DataInputStream messageDataStream, String origin, int connectionId) throws IOException {
+        int ipLength = messageDataStream.readInt();
+        byte []ipBytes = new byte[ipLength];
+        messageDataStream.readFully(ipBytes);
+        String ipString = new String(ipBytes);
+
+        int port = messageDataStream.readInt();
+
+        return new MessagingNodeHandshake(ipString, port, origin, connectionId);
     }
 
     public Event createEvent(byte[] msg, String origin, int connectionId) throws IOException {
@@ -99,7 +110,10 @@ public class EventFactory {
                 message = buildDeregisterResponse(messageDataStream, origin, connectionId);
                 break;
             case MESSAGING_NODES_LIST:
-                message = buildMessageingNodesList(messageDataStream, origin, connectionId);
+                message = buildMessagingNodesList(messageDataStream, origin, connectionId);
+                break;
+            case MESSAGING_NODE_HANDSHAKE:
+                message = buildMessagingNodeHandshake(messageDataStream, origin, connectionId);
                 break;
             default:
                 throw new IOException("unknown message enum - how did you even manage that?");

@@ -12,12 +12,13 @@ import java.util.NoSuchElementException;
 public class ConnectionManager {
     private class Connection {
         protected int identifier;
-        protected String address;
-        protected int port;
+        //protected String address;
+        //protected int port;
         protected Socket socket;
         protected TCPSender sender;
         protected TCPReceiverThread receiver;
         protected Thread receiverThread;
+        protected String nodeId;
     }
 
 
@@ -34,12 +35,23 @@ public class ConnectionManager {
         idCounter = 0;
     }
 
+    public int getConnectionId(String nodeId) throws NoSuchElementException{
+        for (Connection c : connections) {
+            if (nodeId.equals(c.nodeId)) {
+                return c.identifier;
+            }
+        }
+
+        throw new NoSuchElementException();
+    }
+
     public int newConnection(String address, int port) throws IOException {
         Connection connection = new Connection();
         connection.identifier = idCounter++;
+        connection.nodeId = address + ":" + port;
         connection.socket = new Socket(address, port);
-        connection.address = connection.socket.getInetAddress().getHostAddress();
-        connection.port = connection.socket.getPort();
+        //connection.address = connection.socket.getInetAddress().getHostAddress();
+        //connection.port = connection.socket.getPort();
         connection.sender = new TCPSender(connection.socket);
         connection.receiver = new TCPReceiverThread(connection.socket, parent);
         connection.receiverThread = new Thread(connection.receiver);
@@ -57,8 +69,9 @@ public class ConnectionManager {
             throws IOException {
         Connection connection = new Connection();
         connection.identifier = idCounter++;
-        connection.address = socket.getInetAddress().getHostAddress();
-        connection.port = socket.getPort();
+        connection.nodeId = null;
+        //connection.address = socket.getInetAddress().getHostAddress();
+        //connection.port = connection.socket.getPort();
         connection.socket = socket;
         connection.sender = new TCPSender(socket);
         connection.receiver = receiver;
@@ -67,6 +80,21 @@ public class ConnectionManager {
         connections.add(connection);
 
         return connection.identifier;
+    }
+
+    public void setNodeId(int connectionId, String nodeId) throws NoSuchElementException {
+        for (Connection c : connections) {
+            if (c.identifier == connectionId) {
+                if (c.nodeId == null) {
+                    c.nodeId = nodeId;
+                } else {
+                    System.err.println("NodeID has already been set for connection " + c.identifier + " (" + c.nodeId + ").");
+                }
+                return;
+            }
+        }
+
+        throw new NoSuchElementException("setNodeID didnt find connection");
     }
 
 

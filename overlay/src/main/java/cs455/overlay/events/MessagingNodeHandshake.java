@@ -5,25 +5,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public class RegisterRequest implements Event {
-
-    private String origin;
-
-    // IP field contained in request
+public class MessagingNodeHandshake implements Event{
     private String ip;
-
-    // Port field contained in request
     private int port;
 
+    private String origin;
     private int connectionId;
 
-    public RegisterRequest(String ip, int port, String origin, int connectionId) {
+    public MessagingNodeHandshake(String ip, int port, String origin, int connectionId) {
         this.ip = ip;
         this.port = port;
         this.origin = origin;
         this.connectionId = connectionId;
     }
-
 
     public String getIp() {
         return ip;
@@ -34,22 +28,22 @@ public class RegisterRequest implements Event {
     }
 
     @Override
-    public int getConnectionId() {
-        return connectionId;
-    }
-
-    @Override
     public String getOrigin() {
         return origin;
     }
 
     @Override
-    public MessageTypes getType() {
-        return MessageTypes.REGISTER_REQUEST;
+    public int getConnectionId() {
+        return connectionId;
     }
 
     @Override
-    public byte []getBytes() throws IOException {
+    public MessageTypes getType() {
+        return MessageTypes.MESSAGING_NODE_HANDSHAKE;
+    }
+
+    @Override
+    public byte[] getBytes() throws IOException {
         byte []marshaledBytes = null;
 
         ByteArrayOutputStream bOutStream = new ByteArrayOutputStream();

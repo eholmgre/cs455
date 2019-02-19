@@ -46,8 +46,6 @@ public class TCPReceiverThread implements Runnable{
     @Override
     public void run() {
 
-        System.out.println("TCP receiver thread starting for " + origin);
-
         int dataLength;
         while (socket != null && ! socket.isClosed()) { // todo: probably can simplify
             try {
@@ -63,8 +61,6 @@ public class TCPReceiverThread implements Runnable{
                 break;
             }
         }
-
-        System.out.println("TCP receiver thread stopping for " + origin);
 
     }
 }

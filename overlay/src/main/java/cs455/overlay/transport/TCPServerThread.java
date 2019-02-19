@@ -104,15 +104,12 @@ public class TCPServerThread implements Runnable{
                 int connectionID = connections.addConnection(clientSocket, receiver, receiverThread);
                 receiver.setConnectionId(connectionID);
                 receiverThread.start();
-                System.out.println("New connection: " + clientSocket.getInetAddress().getHostAddress());
             } catch (Exception e) {
                 System.err.println("Error: TCP server thread failed.\n" + e.getMessage());
                 break;
             }
 
         }
-
-        System.out.println("tcp server thread exit");
 
     }
 }
