@@ -49,7 +49,6 @@ public class MessagingNode implements Node {
         nodeState = NodeState.REGISTERING;
         connectionManager = new ConnectionManager(this);
         eventQueue = new LinkedBlockingQueue<>();
-        overlay = new SubOverlay();
     }
 
     private synchronized NodeState getState() {
@@ -138,8 +137,9 @@ public class MessagingNode implements Node {
 
         }
 
+        overlay.computeShortestPaths();
+
         System.out.println("Received weights list. Processed " + numWeights + " edges between " + overlay.size() + " nodes.");
-        //overlay.printOverlay();
 
     }
 
@@ -238,6 +238,8 @@ public class MessagingNode implements Node {
             myPort = tcpServer.getPort();
             myIP = InetAddress.getLocalHost().getHostAddress();
 
+            overlay = new SubOverlay(myIP + ":" + myPort);
+
 
             System.out.println("Messaging node running on " + myIP + ":" + myPort);
 
@@ -277,7 +279,13 @@ public class MessagingNode implements Node {
                     Thread.sleep(3000);
                     break;
                 } else if (command.equals("print-shortest-path")) {
-                    // print dat path
+                    if (! (getState() == NodeState.ROUTING || getState() == NodeState.WORKING
+                            || getState() == NodeState.TASK_COMPLETE || getState() == NodeState.TASK_COMPLETE)) {
+                        System.out.println("Weights have not been received yet.");
+                        continue;
+                    }
+                    overlay.printShortestPaths();
+
                 } else {
                     System.out.println("Invalid command. Valid commands are:\n"
                             + "\tprint-shortest-path\n"

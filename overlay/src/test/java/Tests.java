@@ -4,6 +4,7 @@ import cs455.overlay.events.MessageTypes;
 import cs455.overlay.events.RegisterRequest;
 import cs455.overlay.node.MessagingNode;
 import cs455.overlay.node.Registry;
+import cs455.overlay.routing.SubOverlay;
 import cs455.overlay.util.Overlay;
 import org.junit.*;
 
@@ -109,5 +110,17 @@ public class Tests {
                 fail();
             }
         }
+    }
+
+    @Test
+    public void testSubOverlay() {
+        SubOverlay subOverlay = new SubOverlay("node0:0");
+
+        Overlay overlay = new Overlay();
+
+        for (int i = 1; i < 5; ++i) {
+            //overlay.addNode();
+        }
+
     }
 }
