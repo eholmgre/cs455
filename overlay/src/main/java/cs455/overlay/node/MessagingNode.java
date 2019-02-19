@@ -82,47 +82,47 @@ public class MessagingNode implements Node {
         nodeState = state;
     }
 
-    private synchronized void incRyldCount() {
+    private /*synchronized*/ void incRyldCount() {
         ++ryldCount;
     }
 
-    private synchronized int getRyldCount() {
+    private /*synchronized*/ int getRyldCount() {
         return ryldCount;
     }
 
-    private synchronized void incSendCount() {
+    private /*synchronized*/ void incSendCount() {
         ++sentCount;
     }
 
-    private synchronized int getSentCount() {
+    private /*synchronized*/ int getSentCount() {
         return sentCount;
     }
 
-    private synchronized void incRcvdCount() {
+    private /*synchronized*/ void incRcvdCount() {
         ++rcvdCount;
     }
 
-    private synchronized int getRcvdCount() {
+    private /*synchronized*/ int getRcvdCount() {
         return rcvdCount;
     }
 
-    private synchronized void updateRcvdTotal(int inc) {
+    private /*synchronized*/ void updateRcvdTotal(int inc) {
         receivedTotal += inc;
     }
 
-    private synchronized void updateSendTotal(int inc) {
+    private /*synchronized*/ void updateSendTotal(int inc) {
         sentTotal += inc;
     }
 
-    private synchronized long getRcvdTotal() {
+    private /*synchronized*/ long getRcvdTotal() {
         return receivedTotal;
     }
 
-    private synchronized long getSentTotal() {
+    private /*synchronized*/ long getSentTotal() {
         return sentTotal;
     }
 
-    private synchronized void resetCounters() {
+    private /*synchronized*/ void resetCounters() {
         receivedTotal = 0;
         sentTotal = 0;
         rcvdCount = 0;
