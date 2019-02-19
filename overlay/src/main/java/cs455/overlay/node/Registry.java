@@ -105,10 +105,11 @@ public class Registry implements Node {
     private void handleTaskComplete(TaskComplete message) throws IOException {
         String nodeId = message.getIp() + ":" + message.getPort();
         overlay.setComplete(nodeId);
+        System.out.println("Received task-complete from " + nodeId);
 
         if (overlay.allComplete()) {
             try {
-                System.out.println("sleeping for 15 seconds to let all messages reach their destinations");
+                System.out.println("All nodes task complete, sleeping for 15 seconds to let all messages reach their destinations");
                 Thread.sleep(15000);
                 System.out.println("sending pull summaries");
 

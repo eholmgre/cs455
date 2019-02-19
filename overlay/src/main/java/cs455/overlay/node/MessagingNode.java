@@ -161,6 +161,8 @@ public class MessagingNode implements Node {
                     }
                 }
 
+                System.out.println("Sent " + numRounds + " of 5 messages each");
+
                 System.out.println("sent " + getSentTotal() + ", rcvd " + getRcvdTotal());
 
                 setState(NodeState.TASK_COMPLETE);
@@ -264,6 +266,8 @@ public class MessagingNode implements Node {
                 getRyldCount(), getSentTotal(), getRcvdTotal(), "localhost", -1));
 
         resetCounters();
+
+        //todo reset overlay and connections
 
         setState(NodeState.REGISTERED);
     }

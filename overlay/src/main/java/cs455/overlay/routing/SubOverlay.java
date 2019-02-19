@@ -199,17 +199,7 @@ public class SubOverlay {
                 prev = pred.get(prev);
             }
 
-            // p.path.add(0, myId);
-
             p.dist = cost.get(p.destID);
-
-            System.out.print(p.destID + ": ");
-            for (String s : p.path) {
-                System.out.print(s + " --> ");
-            }
-
-
-            System.out.println(p.destID + " = " + p.dist);
 
             shortestPaths.put(p.destID, p);
         }
