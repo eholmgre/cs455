@@ -281,6 +281,10 @@ public class MessagingNode implements Node {
     }
 
     private void handleTaskInitiate(TaskInitiate message) {
+        if (getState() != NodeState.ROUTING) {
+            System.out.println("Received task start, but have not yet received weights");
+            return;
+        }
         int numRounds = message.getNumRounds();
         taskMessageQueue = new LinkedBlockingQueue<>();
 
