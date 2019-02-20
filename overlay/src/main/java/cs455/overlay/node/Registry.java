@@ -96,9 +96,9 @@ public class Registry implements Node {
 
         if (overlay.allSummaries()) {
             overlay.printSummaries();
-            //todo: make sure all stats reset
+            overlay.resetSummaries();
 
-            setState(RegistryState.REGISTRATION);
+            setState(RegistryState.SEND_WEIGHTS);
         }
     }
 
@@ -110,7 +110,7 @@ public class Registry implements Node {
         if (overlay.allComplete()) {
             try {
                 System.out.println("All nodes task complete, sleeping for 15 seconds to let all messages reach their destinations");
-                Thread.sleep(60000);
+                Thread.sleep(15000);
                 System.out.println("sending pull summaries");
 
                 connectionManager.broadcast(new PullTrafficSummaries("localhost", -1));
@@ -203,9 +203,11 @@ public class Registry implements Node {
         }
         ArrayList<String[]> connections = overlay.generateOverlay(connectionRequirement);
 
+        /*
         if (connections == null) {
+            System.out.println("");
             return;
-        }
+        } */
 
         HashMap<String, String> nodeLists = new HashMap<>();
         HashMap<String, Integer> nodeNums = new HashMap<>();
@@ -231,6 +233,8 @@ public class Registry implements Node {
         }
 
         setState(RegistryState.CREATE_OVERLAY);
+
+        System.out.println("Setup overlay with connection requirement " + connectionRequirement);
     }
 
     private void sendWeights() throws IOException {
@@ -241,10 +245,12 @@ public class Registry implements Node {
         connectionManager.broadcast(new LinkWeights(weights.size(), weights, "localhost", -1));
 
         setState(RegistryState.SEND_WEIGHTS);
+        System.out.println("Sent connection weights to overlay.");
     }
 
     private void taskStart(int numRounds) throws IOException{
         connectionManager.broadcast(new TaskInitiate(numRounds, "localhost", -1));
+        System.out.println("Starting " + numRounds + " rounds in overlay.");
         setState(RegistryState.TASK_STARTED);
     }
 
@@ -340,7 +346,9 @@ public class Registry implements Node {
                     int numConnections = 0;
 
                     boolean badArg = false;
-                    if (command.length != 2) {
+                    if (command.length == 1) {
+                        numConnections = 4;
+                    } else if (command.length != 2) {
                         badArg = true;
                     }
                     else {
@@ -361,6 +369,7 @@ public class Registry implements Node {
                     }
 
                     setupOverlay(numConnections);
+
 
 
                 } else if (command[0].equals("send-overlay-link-weights")) {
@@ -389,7 +398,7 @@ public class Registry implements Node {
                     }
 
                     if (badArg) {
-                        System.out.println("usage: setup-overlay number-of-connections (integer >= 2)");
+                        System.out.println("usage: setup-overlay number-of-connections (default 4)");
                         continue;
                     }
 
@@ -399,7 +408,7 @@ public class Registry implements Node {
                     System.out.println("Invalid command. valid commands are: \n"
                             + "\tlist-messaging-nodes\n"
                             + "\tlist-weights\n"
-                            + "\tsetup-overlay number-of-connections (integer >= 2)\n"
+                            + "\tsetup-overlay number-of-connections (default 4)\n"
                             + "\tsend-overlay-link-weights\n"
                             + "\texit");
                     continue;
@@ -418,6 +427,9 @@ public class Registry implements Node {
 
             serverThread.join();
             helperThread.join();
+
+            connectionManager.closeAllConnections();
+
         } catch (InterruptedException e) {
             System.err.println("Error: interrupted while joining helper threads");
             return;

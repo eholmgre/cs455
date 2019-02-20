@@ -99,7 +99,7 @@ public class TCPServerThread implements Runnable{
             Socket clientSocket;
             try {
                 clientSocket = serverSocket.accept();
-                TCPReceiverThread receiver = new TCPReceiverThread(clientSocket, parent);
+                TCPReceiverThread receiver = new TCPReceiverThread(clientSocket, connections, parent);
                 Thread receiverThread = new Thread(receiver);
                 int connectionID = connections.addConnection(clientSocket, receiver, receiverThread);
                 receiver.setConnectionId(connectionID);

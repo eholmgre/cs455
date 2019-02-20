@@ -167,6 +167,7 @@ public class MessagingNode implements Node {
                 setState(NodeState.TASK_COMPLETE);
                 // todo: probably best not to replace registry with connectionId 0
                 connectionManager.sendMessage(0, new TaskComplete(myIP, myPort, "localhost", -1));
+                System.out.println("Send task complete to registry.");
             } catch (IOException e) {
                 System.out.println("IOException in message creator thread" + e.getMessage());
             }
@@ -270,11 +271,13 @@ public class MessagingNode implements Node {
         connectionManager.sendMessage(0, new TrafficSummary(myIP, myPort, getSentCount(), getRcvdCount(),
                 getRyldCount(), getSentTotal(), getRcvdTotal(), "localhost", -1));
 
+        System.out.println("Send traffic summary to registry.");
+
         resetCounters();
 
         //todo reset overlay and connections
 
-        setState(NodeState.REGISTERED);
+        setState(NodeState.ROUTING);
     }
 
     private void handleTaskInitiate(TaskInitiate message) {
@@ -489,6 +492,8 @@ public class MessagingNode implements Node {
         System.out.println("Exited command loop");
 
         try {
+
+            // close all connections / receiver threads
             tcpServer.stop();
 
             serverThread.join();
@@ -496,6 +501,8 @@ public class MessagingNode implements Node {
             helperThread.interrupt();
 
             helperThread.join();
+
+            connectionManager.closeAllConnections();
         } catch (InterruptedException e) {
             System.err.println("Error: interrupted while stopping helper thread");
             System.err.println(e.getMessage());

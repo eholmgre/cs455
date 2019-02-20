@@ -1,10 +1,7 @@
 package cs455.overlay.util;
 
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.*;
 
 public class Overlay {
 
@@ -13,6 +10,7 @@ public class Overlay {
     private ArrayList<String []> connections;
 
     private ArrayList<Integer> weights;
+
 
     private class WorkSummary {
         int numSent;
@@ -96,6 +94,13 @@ public class Overlay {
         }
 
         return true;
+    }
+
+    public void resetSummaries() {
+        for (MessageNode node : nodes) {
+            node.complete = false;
+            node.summary = null;
+        }
     }
 
     public void setSummary(String nodeId, int numSent, int numRcvd, int numRlyd, long totalSent, long totalRcvd) {

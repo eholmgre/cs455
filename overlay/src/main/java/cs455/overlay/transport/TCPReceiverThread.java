@@ -18,25 +18,28 @@ public class TCPReceiverThread implements Runnable{
 
     private Node parent;
 
+    private ConnectionManager connectionManager;
+
     private int connectionId;
 
-    private volatile boolean isStopped; //TODO: see if we can't stop on socket close
+    private volatile boolean closing;
 
     private synchronized boolean beenStopped() {
-        return this.isStopped;
+        return this.closing;
     }
 
-    public synchronized void stop() {
-        this.isStopped = true;
+    public synchronized void close() {
+        this.closing = true;
     }
 
-    public TCPReceiverThread(Socket socket, Node parent) throws IOException {
+    public TCPReceiverThread(Socket socket,ConnectionManager cm, Node parent) throws IOException {
         this.socket = socket;
         this.parent = parent;
         din = new DataInputStream(socket.getInputStream());
-        isStopped = false;
+        closing = false;
         messageFactory = EventFactory.getInstance();
         origin = socket.getInetAddress().getHostAddress();
+        connectionManager = cm;
     }
 
     public void setConnectionId(int connectionId) {
@@ -60,6 +63,14 @@ public class TCPReceiverThread implements Runnable{
                 System.err.println("Error: exception in TCP thread for " + origin + ": " + socket.getLocalPort() + " " + e.getMessage());
                 break;
             }
+        }
+
+        try {
+            if (! beenStopped()) {
+                connectionManager.connectionClosing(connectionId);
+            }
+        } catch (IOException e) {
+            System.err.println("Error closing connection with " + origin);
         }
 
     }

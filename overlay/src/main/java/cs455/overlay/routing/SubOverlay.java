@@ -52,6 +52,8 @@ public class SubOverlay {
 
     private HashMap<String, ShortestPath> shortestPaths;
 
+    private HashMap<String, Integer> weightMap;
+
     private String myId;
     private Random rand;
 
@@ -59,6 +61,7 @@ public class SubOverlay {
         this.myId = myId;
         nodes = new ArrayList<>();
         shortestPaths = new HashMap<>();
+        weightMap = new HashMap<>();
         rand = new Random();
     }
 
@@ -97,6 +100,9 @@ public class SubOverlay {
     public void addEdge(String node1, String node2, int weight) throws NoSuchElementException {
         getNode(node1).connections.add(new Edge(node2, weight));
         getNode(node2).connections.add(new Edge(node1, weight));
+
+        weightMap.put(node1 + "-" + node2, weight);
+        weightMap.put(node2 + "-" + node1, weight);
 
     }
 
@@ -211,15 +217,17 @@ public class SubOverlay {
             if (n.isMe) {
                 continue;
             }
-            String path = "";
-            for (String step : shortestPaths.get(n.nodeId).path) {
-                path += step;
-                //todo: figure this out when youre not dead
-                int weight = -1;
-                path += "--" + weight + "--";
-            }
 
-            path += n.nodeId;
+            String path = myId;
+            String lastNode = myId;
+            for (String step : shortestPaths.get(n.nodeId).path) {
+                if(! lastNode.equals(n.nodeId)) {
+                    path += "--" + weightMap.get(lastNode + "-" + step) + "--";
+                }
+                path += step;
+
+                lastNode = step;
+            }
 
             System.out.println(path);
         }
