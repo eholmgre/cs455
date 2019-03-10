@@ -15,9 +15,6 @@ public class Server {
     private String []pargs;
     private ThreadPool pool;
 
-    private Selector selector;
-    private ServerSocketChannel serverSocket;
-
     public Server(String []args) {
         pargs = args;
     }
@@ -26,19 +23,18 @@ public class Server {
         System.out.println("Scaling Server Usage:\n\tserver <portnum> <thread pool size> <batch size> <batch time>");
     }
 
-    private void handleAcceptation(Selector selector, ServerSocketChannel serverSocket) {
+    private void handleAcceptation(Selector selector, SocketChannel client) {
 
         pool.add(new Task() {
             @Override
             public void run() {
                 try {
-                    SocketChannel client = serverSocket.accept();
-                    //todo client is null?
+                    //todo client is null? -- fixed by accepting in nio loop?
                     client.configureBlocking(false);
                     client.register(selector, SelectionKey.OP_READ);
-                    System.out.println("registered a node");
+                    System.out.println("Client registered");
                 } catch (IOException e) {
-                    System.out.println("damn thing didnt work");
+                    System.out.println("Error accepting connection: " + e.getMessage());
                 }
             }
         });
@@ -50,7 +46,7 @@ public class Server {
             @Override
             public void run() {
                 try {
-                    ByteBuffer buffer = ByteBuffer.allocate(256);
+                    ByteBuffer buffer = ByteBuffer.allocate(9 * 1024); // better safe than sorry
 
                     SocketChannel client = (SocketChannel) k.channel();
 
@@ -58,7 +54,7 @@ public class Server {
 
                     if (bytesRead == -1) {
                         client.close();
-                        System.out.println("well, bye");
+                        System.out.println("Client unregistered");
                     } else {
 
                         buffer.put("Got: ".getBytes());
@@ -68,7 +64,7 @@ public class Server {
                     }
 
                 } catch (IOException e) {
-                    System.out.println("couldnt do it");
+                    System.out.println("Error handling message: " + e.getMessage());
                 }
             }
         });
@@ -125,6 +121,9 @@ public class Server {
 
         // NIO setup
 
+        Selector selector;
+        ServerSocketChannel serverSocket;
+
         try {
 
             selector = Selector.open();
@@ -135,7 +134,7 @@ public class Server {
             serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
         } catch (IOException e) {
-            System.out.println("done messed up with the NIO");
+            System.out.println("Error setting up NIO: " + e.getMessage());
             return;
         }
 
@@ -149,7 +148,8 @@ public class Server {
 
         while (true) {
             try {
-                selector.select();
+                System.out.println("blocking on select.");
+                System.out.println("Selected " + selector.select() + " keys.");
 
                 Set<SelectionKey> keys = selector.selectedKeys();
                 Iterator<SelectionKey> iter = keys.iterator();
@@ -158,14 +158,17 @@ public class Server {
                     SelectionKey key = iter.next();
 
                     if (! key.isValid()) {
+                        System.out.println("got invalid key");
                         continue;
                     }
 
                     if (key.isAcceptable()){
-                        handleAcceptation(selector, serverSocket);
+                        System.out.println("got acceptable key");
+                        handleAcceptation(selector, serverSocket.accept());
                     }
 
                     if (key.isReadable()) {
+                        System.out.println("got message key");
                         handleMessage(key);
                     }
 
@@ -173,7 +176,7 @@ public class Server {
                 }
 
             } catch (IOException e) {
-                System.out.println("oh darn");
+                System.out.println("Error in NIO loop: " + e.getMessage());
             }
         }
 

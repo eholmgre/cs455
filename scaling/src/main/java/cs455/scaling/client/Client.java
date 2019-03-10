@@ -3,11 +3,15 @@ package cs455.scaling.client;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+import java.util.Set;
 
 public class Client {
 
-    String []pargs;
+    private String []pargs;
 
     private SocketChannel client;
     private ByteBuffer buffer;
@@ -42,7 +46,7 @@ public class Client {
         } catch (NumberFormatException e) {
             parseSuccess = false;
         } finally {
-            // lol i dont even know what this really does but it seems to work
+            // lol i dont know what this does but it seems to work
             if (serverAddr == null || serverAddr.isUnresolved()) {
                 System.out.println("Invalid server host/port " + serverAddr);
                 parseSuccess = false;
@@ -59,24 +63,81 @@ public class Client {
             }
         }
 
+        Selector selector;
+
+        final int rate = messageRate;
+
+        Thread senderThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    while (! Thread.currentThread().isInterrupted()) {
+                        buffer = ByteBuffer.wrap(Long.toString(System.currentTimeMillis()).getBytes());
+
+                        System.out.println("Sending: " + buffer.array());
+
+                        client.write(buffer);
+                        buffer.clear();
+
+                        Thread.sleep(1000 / rate);
+                    }
+                } catch (IOException e) {
+                    System.out.println("Error in sender thread: " + e.getMessage());
+                } catch (InterruptedException e) {
+                    System.out.println("Sender thread interrupted");
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+
         try {
+            selector = Selector.open();
+            System.out.println("Opening connection");
             client = SocketChannel.open(serverAddr);
+            client.configureBlocking(false);
+            client.register(selector, SelectionKey.OP_READ);
+            System.out.println("client connected: " + client.isConnected());
             buffer = ByteBuffer.allocate(256);
 
-            for(int i = 0; i < 100; ++i) {
-                buffer = ByteBuffer.wrap(Long.toString(System.currentTimeMillis()).getBytes());
-                String respose = null;
+            senderThread.start();
 
-                client.write(buffer);
-                buffer.clear();
-                client.read(buffer);
-                respose = new String(buffer.array()).trim();
-                buffer.clear();
 
-                System.out.println(respose);
+            while (true) {
+                System.out.println("Selected " + selector.select() + " keys");
+
+                Set<SelectionKey> keys = selector.selectedKeys();
+                Iterator<SelectionKey> iter = keys.iterator();
+
+                while (iter.hasNext()) {
+                    SelectionKey key = iter.next();
+
+
+                    if (! key.isValid()) {
+                        System.out.println("got invalid key");
+                        continue;
+                    }
+
+                    if (key.isReadable()) {
+                        System.out.println("got message key");
+
+                        SocketChannel server = (SocketChannel) key.channel();
+
+                        server.read(buffer);
+
+                        String resp = new String(buffer.array()).trim();
+                        buffer.clear();
+
+                        System.out.println("got: " + resp);
+                    }
+
+                    iter.remove();
+                }
+
+
             }
+
         } catch (IOException e) {
-            System.out.println("aww man");
+            System.out.println("Error in message loop: " + e.getMessage());
         }
     }
 

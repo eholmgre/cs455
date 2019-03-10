@@ -51,7 +51,7 @@ public class ThreadPool {
                 if (taskQueue.offer(current)) {
                     current = null;
                 } else {
-                    System.out.println("could not add baked batch to queue");
+                    System.out.println("Could not add batch to queue after batch time");
                 }
             }
         };
@@ -61,12 +61,12 @@ public class ThreadPool {
             batchTime = time;
             timer = new Timer();
             // is it bad i start this in ctor?
-            timer.scheduleAtFixedRate(doIt, 0, batchTime * 1000);
         }
 
         public void add(Task t) {
             if (current == null) {
                 current = new Batch();
+                timer.schedule(doIt, 0, batchTime * 1000);
             }
 
             current.add(t);
