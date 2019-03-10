@@ -41,32 +41,32 @@ public class ThreadPool {
 
         private Batch current;
 
-        private TimerTask doIt = new TimerTask() {
-            @Override
-            public void run() {
-                if (current == null) {
-                    return;
-                }
-
-                if (taskQueue.offer(current)) {
-                    current = null;
-                } else {
-                    System.out.println("Could not add batch to queue after batch time");
-                }
-            }
-        };
-
         public Batcher(int size, int time) {
             batchSize = size;
             batchTime = time;
-            timer = new Timer();
-            // is it bad i start this in ctor?
         }
 
-        public void add(Task t) {
+        public synchronized void add(Task t) {
             if (current == null) {
+                System.out.println("new batch " + System.currentTimeMillis() / 1000);
                 current = new Batch();
-                timer.schedule(doIt, 0, batchTime * 1000);
+
+                timer = new Timer("Batch Timer");
+                timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        if (current == null) {
+                            return;
+                        }
+
+                        if (taskQueue.offer(current)) {
+                            System.out.println("submitted batch (time) " + System.currentTimeMillis() / 1000);
+                            current = null;
+                        } else {
+                            System.out.println("Could not add batch to queue after batch time");
+                        }
+                    }
+                }, batchTime * 1000);
             }
 
             current.add(t);
@@ -74,6 +74,8 @@ public class ThreadPool {
             if (current.size() >= batchSize) {
                 if (taskQueue.offer(current)) {
                     current = null;
+                    timer.cancel();
+                    System.out.println("submitted batch (size) " + System.currentTimeMillis() / 1000);
                 } else {
                     System.out.println("Could not full batch to queue");
                 }
@@ -91,7 +93,7 @@ public class ThreadPool {
     public ThreadPool(int numThreads, int batchSize, int batchTime) {
         this.numThreads = numThreads;
         threads = new LinkedList<>();
-        taskQueue = new LinkedBlockingQueue<Batch>();
+        taskQueue = new LinkedBlockingQueue<>();
         batcher = new Batcher(batchSize, batchTime);
     }
 
@@ -111,11 +113,12 @@ public class ThreadPool {
             try {
                 while (! Thread.currentThread().isInterrupted()) { // maybe just a while true?
                     Batch b = taskQueue.take();
+                    System.out.println("running batch");
 
                     while (b.hasTask()) {
                         Task t = b.next();
                         if (t == null) {
-                            System.out.println("what");
+                            System.out.println("これは何ですか？！？ (batch task null)");
                         } else {
                             t.run();
                         }
