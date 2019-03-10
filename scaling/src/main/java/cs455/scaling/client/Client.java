@@ -1,10 +1,16 @@
 package cs455.scaling.client;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 public class Client {
 
     String []pargs;
+
+    private SocketChannel client;
+    private ByteBuffer buffer;
 
     public Client(String []args) {
         pargs = args;
@@ -51,6 +57,26 @@ public class Client {
                 printUsage();
                 return;
             }
+        }
+
+        try {
+            client = SocketChannel.open(serverAddr);
+            buffer = ByteBuffer.allocate(256);
+
+            for(int i = 0; i < 100; ++i) {
+                buffer = ByteBuffer.wrap(Long.toString(System.currentTimeMillis()).getBytes());
+                String respose = null;
+
+                client.write(buffer);
+                buffer.clear();
+                client.read(buffer);
+                respose = new String(buffer.array()).trim();
+                buffer.clear();
+
+                System.out.println(respose);
+            }
+        } catch (IOException e) {
+            System.out.println("aww man");
         }
     }
 

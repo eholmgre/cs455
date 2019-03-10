@@ -2,9 +2,11 @@ package cs455.scaling.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -24,9 +26,53 @@ public class Server {
         System.out.println("Scaling Server Usage:\n\tserver <portnum> <thread pool size> <batch size> <batch time>");
     }
 
-    private void handleAcception(SelectionKey k) {}
+    private void handleAcceptation(Selector selector, ServerSocketChannel serverSocket) {
 
-    private void handleMessage(SelectionKey k) {}
+        pool.add(new Task() {
+            @Override
+            public void run() {
+                try {
+                    SocketChannel client = serverSocket.accept();
+                    //todo client is null?
+                    client.configureBlocking(false);
+                    client.register(selector, SelectionKey.OP_READ);
+                    System.out.println("registered a node");
+                } catch (IOException e) {
+                    System.out.println("damn thing didnt work");
+                }
+            }
+        });
+    }
+
+    private void handleMessage(SelectionKey k) {
+
+        pool.add(new Task() {
+            @Override
+            public void run() {
+                try {
+                    ByteBuffer buffer = ByteBuffer.allocate(256);
+
+                    SocketChannel client = (SocketChannel) k.channel();
+
+                    int bytesRead = client.read(buffer);
+
+                    if (bytesRead == -1) {
+                        client.close();
+                        System.out.println("well, bye");
+                    } else {
+
+                        buffer.put("Got: ".getBytes());
+                        buffer.flip();
+                        client.write(buffer);
+                        buffer.clear();
+                    }
+
+                } catch (IOException e) {
+                    System.out.println("couldnt do it");
+                }
+            }
+        });
+    }
 
 
     public void start() {
@@ -95,7 +141,8 @@ public class Server {
 
         // threadpool setup / start?
 
-        pool = new ThreadPool(numThreads);
+        pool = new ThreadPool(numThreads, batchSize, batchTime);
+        pool.start();
 
 
         // NIO loop
@@ -115,7 +162,7 @@ public class Server {
                     }
 
                     if (key.isAcceptable()){
-                        handleAcception(key);
+                        handleAcceptation(selector, serverSocket);
                     }
 
                     if (key.isReadable()) {
