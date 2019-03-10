@@ -21,10 +21,10 @@ public class ThreadPool {
         }
     }
 
-    private class ThreadRunner implements Runnable {
+    private class WorkerThread implements Runnable {
         final private int id;
 
-        public ThreadRunner(int id) {
+        public WorkerThread(int id) {
             this.id = id;
         }
 
@@ -42,20 +42,18 @@ public class ThreadPool {
                 // lol what does this even do?
                 Thread.currentThread().interrupt();
             }
-
         }
     }
 
 
     public void start() {
         for (int i = 0; i < numThreads; ++i) {
-            threads.add(new Thread(new ThreadRunner(i)));
+            threads.add(new Thread(new WorkerThread(i)));
         }
 
         for (Thread t : threads) {
             t.start();
         }
-
     }
 
     public void stop() {

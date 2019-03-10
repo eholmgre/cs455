@@ -1,7 +1,5 @@
 package cs455.scaling.server;
 
-import cs455.scaling.client.Client;
-
 public class Server {
 
     String []pargs;
