@@ -10,6 +10,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
+import java.security.Security;
+import java.util.Base64;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
@@ -23,9 +25,12 @@ public class Client {
 
     private final LinkedList<String> hashes;
 
+    private Base64.Encoder base64;
+
     public Client(String []args) {
         pargs = args;
         hashes = new LinkedList<>();
+        base64 = Base64.getEncoder();
     }
 
     public void printUsage() {
@@ -160,6 +165,8 @@ public class Client {
             while (iter.hasNext()) {
                 String hash = iter.next();
 
+                System.out.println(base64.encodeToString(hash.getBytes()));
+
                 if (hash.equals(resp)) {
                     iter.remove();
                     found = true;
@@ -168,7 +175,7 @@ public class Client {
             }
 
             if (! found) {
-                System.out.printf("got response not in hash list: [" + resp + "]");
+                System.out.println("got response not in hash list: [" + base64.encodeToString(resp.getBytes()) + "]");
             }
         }
     }
