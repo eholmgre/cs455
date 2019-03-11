@@ -74,7 +74,7 @@ public class Client {
                     while (! Thread.currentThread().isInterrupted()) {
                         buffer = ByteBuffer.wrap(Long.toString(System.currentTimeMillis()).getBytes());
 
-                        System.out.println("Sending: " + buffer.array());
+                        //System.out.println("Sending: " + buffer.array());
 
                         client.write(buffer);
                         buffer.clear();
@@ -118,7 +118,7 @@ public class Client {
                     }
 
                     if (key.isReadable()) {
-                        System.out.println("got message key");
+                        //System.out.println("got message key");
 
                         SocketChannel server = (SocketChannel) key.channel();
 

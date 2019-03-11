@@ -57,7 +57,7 @@ public class Server {
                         System.out.println("Client unregistered");
                     } else {
 
-                        buffer.put("Got: ".getBytes());
+                        buffer.put("returning ".getBytes());
                         buffer.flip();
                         client.write(buffer);
                         buffer.clear();
@@ -148,8 +148,8 @@ public class Server {
 
         while (true) {
             try {
-                System.out.println("blocking on select.");
-                System.out.println("Selected " + selector.select() + " keys.");
+                //System.out.println("blocking on select.");
+                System.out.println("Selected " + selector.select(100) + " keys.");
 
                 Set<SelectionKey> keys = selector.selectedKeys();
                 Iterator<SelectionKey> iter = keys.iterator();
@@ -163,12 +163,12 @@ public class Server {
                     }
 
                     if (key.isAcceptable()){
-                        System.out.println("got acceptable key");
+                        //System.out.println("got acceptable key");
                         handleAcceptation(selector, serverSocket.accept());
                     }
 
                     if (key.isReadable()) {
-                        System.out.println("got message key");
+                        //System.out.println("got message key");
                         handleMessage(key);
                     }
 

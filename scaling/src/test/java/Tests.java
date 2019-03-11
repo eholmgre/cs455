@@ -8,7 +8,7 @@ public class Tests {
 
     @Test
     public void testThreadPool() {
-        ThreadPool tp = new ThreadPool(1, 5,2);
+        ThreadPool tp = new ThreadPool(1, 5,2, true);
 
         Random r = new Random();
 

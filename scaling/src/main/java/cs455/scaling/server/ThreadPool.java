@@ -48,7 +48,7 @@ public class ThreadPool {
 
         public synchronized void add(Task t) {
             if (current == null) {
-                System.out.println("new batch " + System.currentTimeMillis() / 1000);
+                if (debug) System.out.println("new batch " + System.currentTimeMillis() / 1000);
                 current = new Batch();
 
                 timer = new Timer("Batch Timer");
@@ -60,7 +60,7 @@ public class ThreadPool {
                         }
 
                         if (taskQueue.offer(current)) {
-                            System.out.println("submitted batch (time) " + System.currentTimeMillis() / 1000);
+                            if (debug) System.out.println("submitted batch (time) " + System.currentTimeMillis() / 1000);
                             current = null;
                         } else {
                             System.out.println("Could not add batch to queue after batch time");
@@ -75,7 +75,7 @@ public class ThreadPool {
                 if (taskQueue.offer(current)) {
                     current = null;
                     timer.cancel();
-                    System.out.println("submitted batch (size) " + System.currentTimeMillis() / 1000);
+                    if (debug) System.out.println("submitted batch (size) " + System.currentTimeMillis() / 1000);
                 } else {
                     System.out.println("Could not full batch to queue");
                 }
@@ -89,13 +89,25 @@ public class ThreadPool {
 
     private Batcher batcher;
 
+    private final boolean debug;
+
 
     public ThreadPool(int numThreads, int batchSize, int batchTime) {
         this.numThreads = numThreads;
         threads = new LinkedList<>();
         taskQueue = new LinkedBlockingQueue<>();
         batcher = new Batcher(batchSize, batchTime);
+        debug = false;
     }
+
+    public ThreadPool(int numThreads, int batchSize, int batchTime, boolean debug) {
+        this.numThreads = numThreads;
+        threads = new LinkedList<>();
+        taskQueue = new LinkedBlockingQueue<>();
+        batcher = new Batcher(batchSize, batchTime);
+        this.debug = debug;
+    }
+
 
     public void add(Task t) {
         batcher.add(t);
@@ -113,12 +125,12 @@ public class ThreadPool {
             try {
                 while (! Thread.currentThread().isInterrupted()) { // maybe just a while true?
                     Batch b = taskQueue.take();
-                    System.out.println("running batch");
+                    if (debug) System.out.println("running batch");
 
                     while (b.hasTask()) {
                         Task t = b.next();
                         if (t == null) {
-                            System.out.println("これは何ですか？！？ (batch task null)");
+                            if (debug) System.out.println("これは何ですか？！？ (batch task null)");
                         } else {
                             t.run();
                         }
