@@ -19,33 +19,18 @@ public class Tests {
             try {
 
                 final int num = i;
-                tp.add(new Task() {
-                    @Override
-                    public void run() {
-                        System.out.println("A " + num);
-                    }
-                });
+                tp.add(() -> System.out.println("A " + num));
                 System.out.println("Added A " + num);
 
                 Thread.sleep(100);
 
 
-                tp.add(new Task() {
-                    @Override
-                    public void run() {
-                        System.out.println("B " + num);
-                    }
-                });
+                tp.add(() -> System.out.println("B " + num));
                 System.out.println("Added B " + num);
 
                 Thread.sleep(200);
 
-                tp.add(new Task() {
-                    @Override
-                    public void run() {
-                        System.out.println("C " + num);
-                    }
-                });
+                tp.add(() -> System.out.println("C " + num));
                 System.out.println("Added C " + num);
 
 

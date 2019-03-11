@@ -1,12 +1,17 @@
 package cs455.scaling.client;
 
+import cs455.scaling.util.Hasher;
+import cs455.scaling.util.MessageMaker;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Set;
 
 public class Client {
@@ -16,8 +21,11 @@ public class Client {
     private SocketChannel client;
     private ByteBuffer buffer;
 
+    private final LinkedList<String> hashes;
+
     public Client(String []args) {
         pargs = args;
+        hashes = new LinkedList<>();
     }
 
     public void printUsage() {
@@ -67,26 +75,30 @@ public class Client {
 
         final int rate = messageRate;
 
-        Thread senderThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    while (! Thread.currentThread().isInterrupted()) {
-                        buffer = ByteBuffer.wrap(Long.toString(System.currentTimeMillis()).getBytes());
+        Thread senderThread = new Thread(() -> {
+            try {
+                while (! Thread.currentThread().isInterrupted()) {
+                    byte []message = MessageMaker.createMessage();
+                    buffer = ByteBuffer.wrap(message);
 
-                        //System.out.println("Sending: " + buffer.array());
-
-                        client.write(buffer);
-                        buffer.clear();
-
-                        Thread.sleep(1000 / rate);
+                    synchronized (hashes) {
+                        hashes.add(Hasher.SHA1FromBytes(message));
                     }
-                } catch (IOException e) {
-                    System.out.println("Error in sender thread: " + e.getMessage());
-                } catch (InterruptedException e) {
-                    System.out.println("Sender thread interrupted");
-                    Thread.currentThread().interrupt();
+
+                    //System.out.println("Sending: " + buffer.array());
+
+                    client.write(buffer);
+                    buffer.clear();
+
+                    Thread.sleep(1000 / rate);
                 }
+            } catch (IOException e) {
+                System.out.println("Error in sender thread: " + e.getMessage());
+            } catch (InterruptedException e) {
+                System.out.println("Sender thread interrupted");
+                Thread.currentThread().interrupt();
+            } catch (NoSuchAlgorithmException e) {
+                System.out.printf("Hashing Error: " + e.getMessage());
             }
         });
 
@@ -118,16 +130,7 @@ public class Client {
                     }
 
                     if (key.isReadable()) {
-                        //System.out.println("got message key");
-
-                        SocketChannel server = (SocketChannel) key.channel();
-
-                        server.read(buffer);
-
-                        String resp = new String(buffer.array()).trim();
-                        buffer.clear();
-
-                        System.out.println("got: " + resp);
+                        handleReadable(key);
                     }
 
                     iter.remove();
@@ -138,6 +141,35 @@ public class Client {
 
         } catch (IOException e) {
             System.out.println("Error in message loop: " + e.getMessage());
+        }
+    }
+
+    private void handleReadable(SelectionKey key) throws IOException { //todo: delegate this to separate thread?
+        SocketChannel server = (SocketChannel) key.channel();
+
+        server.read(buffer);
+
+        String resp = new String(buffer.array()).trim();
+        buffer.clear();
+
+        boolean found = false;
+
+        synchronized (hashes) {
+            Iterator<String> iter = hashes.iterator();
+
+            while (iter.hasNext()) {
+                String hash = iter.next();
+
+                if (hash.equals(resp)) {
+                    iter.remove();
+                    found = true;
+                    break;
+                }
+            }
+
+            if (! found) {
+                System.out.printf("got response not in hash list: [" + resp + "]");
+            }
         }
     }
 

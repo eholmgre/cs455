@@ -1,5 +1,7 @@
 package cs455.scaling.server;
 
+import cs455.scaling.util.Hasher;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -7,6 +9,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -25,47 +28,47 @@ public class Server {
 
     private void handleAcceptation(Selector selector, SocketChannel client) {
 
-        pool.add(new Task() {
-            @Override
-            public void run() {
-                try {
-                    //todo client is null? -- fixed by accepting in nio loop?
-                    client.configureBlocking(false);
-                    client.register(selector, SelectionKey.OP_READ);
-                    System.out.println("Client registered");
-                } catch (IOException e) {
-                    System.out.println("Error accepting connection: " + e.getMessage());
-                }
+        pool.add(() -> {
+            try {
+                //todo client is null? -- fixed by accepting in nio loop? Is that ok?
+                client.configureBlocking(false);
+                client.register(selector, SelectionKey.OP_READ);
+                System.out.println("Client registered");
+            } catch (IOException e) {
+                System.out.println("Error accepting connection: " + e.getMessage());
             }
         });
     }
 
     private void handleMessage(SelectionKey k) {
 
-        pool.add(new Task() {
-            @Override
-            public void run() {
-                try {
-                    ByteBuffer buffer = ByteBuffer.allocate(9 * 1024); // better safe than sorry
+        pool.add(() -> {
+            try {
+                ByteBuffer buffer = ByteBuffer.allocate(9 * 1024); // better safe than sorry
 
-                    SocketChannel client = (SocketChannel) k.channel();
+                SocketChannel client = (SocketChannel) k.channel();
 
-                    int bytesRead = client.read(buffer);
+                int bytesRead = client.read(buffer);
 
-                    if (bytesRead == -1) {
-                        client.close();
-                        System.out.println("Client unregistered");
-                    } else {
+                if (bytesRead == -1) {
+                    client.close();
+                    System.out.println("Client unregistered");
+                } else {
 
-                        buffer.put("returning ".getBytes());
-                        buffer.flip();
-                        client.write(buffer);
-                        buffer.clear();
-                    }
+                    byte []message = buffer.array();
 
-                } catch (IOException e) {
-                    System.out.println("Error handling message: " + e.getMessage());
+                    String hash = Hasher.SHA1FromBytes(message);
+
+                    buffer.clear();
+                    buffer = ByteBuffer.wrap(hash.getBytes());
+                    client.write(buffer);
+                    buffer.clear();
                 }
+
+            } catch (IOException e) {
+                System.out.println("Error handling message: " + e.getMessage());
+            } catch (NoSuchAlgorithmException e) {
+                System.out.println("Error computing hash: " + e.getMessage());
             }
         });
     }
@@ -149,7 +152,7 @@ public class Server {
         while (true) {
             try {
                 //System.out.println("blocking on select.");
-                System.out.println("Selected " + selector.select(100) + " keys.");
+                /* System.out.println("Selected " + */selector.select(100) /* + " keys.")*/;
 
                 Set<SelectionKey> keys = selector.selectedKeys();
                 Iterator<SelectionKey> iter = keys.iterator();
