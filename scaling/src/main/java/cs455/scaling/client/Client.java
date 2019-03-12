@@ -10,8 +10,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
-import java.security.Security;
-import java.util.Base64;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
@@ -20,25 +18,22 @@ public class Client {
 
     private String []pargs;
 
-    private SocketChannel client;
-    private ByteBuffer buffer;
+    private SocketChannel server;
+    //private ByteBuffer buffer;
 
     private final LinkedList<String> hashes;
-
-    private Base64.Encoder base64;
 
     public Client(String []args) {
         pargs = args;
         hashes = new LinkedList<>();
-        base64 = Base64.getEncoder();
     }
 
     public void printUsage() {
-        System.out.println("Scaling Client Usage:\n\tclient <server host> <server port> <message rate>");
+        System.out.println("Scaling Client Usage:\n\tserver <server host> <server port> <message rate>");
     }
 
     public void start() {
-        // java cs455.scaling.client.Client server-host server-port message-rate
+        // java cs455.scaling.server.Client server-host server-port message-rate
 
         if (pargs.length != 3) {
             printUsage();
@@ -81,18 +76,23 @@ public class Client {
         final int rate = messageRate;
 
         Thread senderThread = new Thread(() -> {
+            ByteBuffer buffer;
             try {
                 while (! Thread.currentThread().isInterrupted()) {
-                    byte []message = MessageMaker.createMessage();
+                    //byte []message = MessageMaker.createMessage();
+                    byte []message = MessageMaker.readableMessage();
                     buffer = ByteBuffer.wrap(message);
 
+                    String hash = Hasher.SHA1FromBytes(message);
+
+                    //System.out.println("Sending message with hash [" + hash + "]");
+                    System.out.println("Sending  [" + new String(message) + "]");
+
                     synchronized (hashes) {
-                        hashes.add(Hasher.SHA1FromBytes(message));
+                        hashes.add(hash);
                     }
 
-                    //System.out.println("Sending: " + buffer.array());
-
-                    client.write(buffer);
+                    server.write(buffer);
                     buffer.clear();
 
                     Thread.sleep(1000 / rate);
@@ -110,17 +110,19 @@ public class Client {
         try {
             selector = Selector.open();
             System.out.println("Opening connection");
-            client = SocketChannel.open(serverAddr);
-            client.configureBlocking(false);
-            client.register(selector, SelectionKey.OP_READ);
-            System.out.println("client connected: " + client.isConnected());
-            buffer = ByteBuffer.allocate(256);
-
+            server = SocketChannel.open(serverAddr);
+            server.configureBlocking(false);
+            server.register(selector, SelectionKey.OP_READ);
+            System.out.println("server connected: " + server.isConnected());
             senderThread.start();
 
 
             while (true) {
-                System.out.println("Selected " + selector.select() + " keys");
+                int selected = selector.select();
+
+                //if (selected != 0) {
+                //    System.out.println("Selected " + selected + " keys.");
+                //}
 
                 Set<SelectionKey> keys = selector.selectedKeys();
                 Iterator<SelectionKey> iter = keys.iterator();
@@ -150,11 +152,13 @@ public class Client {
     }
 
     private void handleReadable(SelectionKey key) throws IOException { //todo: delegate this to separate thread?
+        ByteBuffer buffer = ByteBuffer.allocate(40);
         SocketChannel server = (SocketChannel) key.channel();
 
         server.read(buffer);
 
-        String resp = new String(buffer.array()).trim();
+        String resp = new String(buffer.array());
+        System.out.println("received [" + resp + "]");
         buffer.clear();
 
         boolean found = false;
@@ -165,7 +169,7 @@ public class Client {
             while (iter.hasNext()) {
                 String hash = iter.next();
 
-                System.out.println(base64.encodeToString(hash.getBytes()));
+                //System.out.println(hash + " vs " + resp);
 
                 if (hash.equals(resp)) {
                     iter.remove();
@@ -175,7 +179,7 @@ public class Client {
             }
 
             if (! found) {
-                System.out.println("got response not in hash list: [" + base64.encodeToString(resp.getBytes()) + "]");
+                //System.out.println("got response not in hash list: [" + base64.encodeToString(resp.getBytes()) + "]");
             }
         }
     }

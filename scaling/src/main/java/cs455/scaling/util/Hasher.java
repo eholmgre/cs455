@@ -9,6 +9,15 @@ public class Hasher {
             MessageDigest digest = MessageDigest.getInstance("SHA1");
             byte[] hash = digest.digest(data);
             BigInteger hashInt = new BigInteger(1, hash);
-            return hashInt.toString(16);
+            String hashString = hashInt.toString(16);
+            StringBuilder padded = new StringBuilder();
+
+            for (int i = 0; i < 40 - hashString.length() ; ++i) {
+                padded.append("0");
+            }
+
+            padded.append(hashString);
+
+            return padded.toString();
     }
 }

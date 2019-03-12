@@ -125,20 +125,15 @@ public class ThreadPool {
             try {
                 while (! Thread.currentThread().isInterrupted()) { // maybe just a while true?
                     Batch b = taskQueue.take();
-                    if (debug) System.out.println("running batch");
+                    if (debug) System.out.println("thread " + id + " running batch");
 
-                    while (b.hasTask()) {
-                        Task t = b.next();
-                        if (t == null) {
-                            if (debug) System.out.println("これは何ですか？！？ (batch task null)");
-                        } else {
-                            t.run();
-                        }
+                    while (b.hasTask() && ! Thread.currentThread().isInterrupted()) {
+                        b.next().run();
                     }
 
                 }
             } catch (InterruptedException e) {
-                System.out.print("Thread " + id + " stopping.");
+                System.out.println("Thread " + id + " stopping.");
 
                 // lol what does this even do?
                 Thread.currentThread().interrupt();
@@ -160,6 +155,11 @@ public class ThreadPool {
     public void stop() {
         for (Thread t : threads) {
             t.interrupt();
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                System.out.println("Interupted while joining thread: " + e.getStackTrace());
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package cs455.scaling.server;
 
 import cs455.scaling.util.Hasher;
+import cs455.scaling.util.MessageMaker;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -27,7 +28,6 @@ public class Server {
     }
 
     private void handleAcceptation(Selector selector, SocketChannel client) {
-
         pool.add(() -> {
             try {
                 //todo client is null? -- fixed by accepting in nio loop? Is that ok?
@@ -41,10 +41,10 @@ public class Server {
     }
 
     private void handleMessage(SelectionKey k) {
-
         pool.add(() -> {
             try {
-                ByteBuffer buffer = ByteBuffer.allocate(9 * 1024); // better safe than sorry
+                //ByteBuffer buffer = ByteBuffer.allocate(9 * 1024); // better safe than sorry
+                ByteBuffer buffer = ByteBuffer.allocate(40);
 
                 SocketChannel client = (SocketChannel) k.channel();
 
@@ -57,10 +57,19 @@ public class Server {
 
                     byte []message = buffer.array();
 
+                    System.out.println("received [" + new String(message) + "]");
+
                     String hash = Hasher.SHA1FromBytes(message);
 
+                    byte []ret = MessageMaker.readableMessage2();
+
+                    System.out.println("sending  [" + new String(ret) + "]");
+
+                    //System.out.println("Rcvd message, sending [" + hash + "] back to client.");
+
                     buffer.clear();
-                    buffer = ByteBuffer.wrap(hash.getBytes());
+                    //buffer = ByteBuffer.wrap(hash.getBytes());
+                    buffer = ByteBuffer.wrap(ret);
                     client.write(buffer);
                     buffer.clear();
                 }
@@ -115,20 +124,17 @@ public class Server {
                 System.out.println("Invalid batch time \"" + pargs[3] + "\"");
                 parseSuccess = false;
             }
-
-            if (! parseSuccess) {
-                printUsage();
-                return;
-            }
         }
 
-        // NIO setup
+        if (! parseSuccess) {
+            printUsage();
+            return;
+        }
 
         Selector selector;
         ServerSocketChannel serverSocket;
 
         try {
-
             selector = Selector.open();
 
             serverSocket = ServerSocketChannel.open();
@@ -141,8 +147,6 @@ public class Server {
             return;
         }
 
-        // threadpool setup / start?
-
         pool = new ThreadPool(numThreads, batchSize, batchTime);
         pool.start();
 
@@ -152,7 +156,12 @@ public class Server {
         while (true) {
             try {
                 //System.out.println("blocking on select.");
-                /* System.out.println("Selected " + */selector.select(100) /* + " keys.")*/;
+                //int selected = selector.select(100);
+                int selected = selector.select();
+
+                //if (selected != 0) {
+                //    System.out.println("Selected " + selected + " keys.");
+                //}
 
                 Set<SelectionKey> keys = selector.selectedKeys();
                 Iterator<SelectionKey> iter = keys.iterator();
@@ -182,9 +191,6 @@ public class Server {
                 System.out.println("Error in NIO loop: " + e.getMessage());
             }
         }
-
-
-
     }
 
 
