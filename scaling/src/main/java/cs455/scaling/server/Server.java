@@ -1,7 +1,7 @@
 package cs455.scaling.server;
 
 import cs455.scaling.util.Hasher;
-import cs455.scaling.util.MessageMaker;
+// import cs455.scaling.util.MessageMaker;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -19,6 +19,8 @@ public class Server {
     private String []pargs;
     private ThreadPool pool;
 
+    private Selector selector;
+
     public Server(String []args) {
         pargs = args;
     }
@@ -27,15 +29,18 @@ public class Server {
         System.out.println("Scaling Server Usage:\n\tserver <portnum> <thread pool size> <batch size> <batch time>");
     }
 
-    private void handleAcceptation(Selector selector, SocketChannel client) {
+    private void handleAcceptation(SelectionKey key) {
         pool.add(() -> {
             try {
-                //todo client is null? -- fixed by accepting in nio loop? Is that ok?
+                ServerSocketChannel server = (ServerSocketChannel) key.channel();
+                SocketChannel client = server.accept();
                 client.configureBlocking(false);
                 client.register(selector, SelectionKey.OP_READ);
                 System.out.println("Client registered");
             } catch (IOException e) {
                 System.out.println("Error accepting connection: " + e.getMessage());
+            } catch (NullPointerException e) {
+                System.out.println("why is this happening");
             }
         });
     }
@@ -44,11 +49,16 @@ public class Server {
         pool.add(() -> {
             try {
                 //ByteBuffer buffer = ByteBuffer.allocate(9 * 1024); // better safe than sorry
-                ByteBuffer buffer = ByteBuffer.allocate(40);
-
+                ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
                 SocketChannel client = (SocketChannel) k.channel();
 
-                int bytesRead = client.read(buffer);
+                int bytesRead = 0;
+
+                synchronized (client) {
+                    bytesRead = client.read(buffer);
+                }
+
+                buffer.flip(); // is this necessary?
 
                 if (bytesRead == -1) {
                     client.close();
@@ -56,22 +66,55 @@ public class Server {
                 } else {
 
                     byte []message = buffer.array();
-
-                    System.out.println("received [" + new String(message) + "]");
+                    //System.out.println("received [" + new String(message) + "]");
 
                     String hash = Hasher.SHA1FromBytes(message);
 
-                    byte []ret = MessageMaker.readableMessage2();
+                    //todo: actually figure out the problem
+                    if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284") || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")) {
+                        System.out.println("aww hell");
+                        return;
+                    }
 
-                    System.out.println("sending  [" + new String(ret) + "]");
+                    System.out.println("received message with hash [" + hash + "]");
+
+                    //byte []ret = MessageMaker.readableMessage2();
+
+                    pool.add(() -> {
+                        // should i be synchronizing on k?
+                        k.interestOps(SelectionKey.OP_WRITE);
+
+                        byte []reply = hash.getBytes();
+                        //byte []reply = ret;
+                        System.out.println("sending  [" + new String(reply) + "]");
+
+                        ByteBuffer sendBuf = ByteBuffer.wrap(reply);
+
+                        try {
+
+                            synchronized (client) {
+                                client.write(sendBuf);
+                            }
+                        } catch (IOException e) {
+                            System.out.println("IOException when sending reply: " + e.getMessage());
+                        }
+
+                        k.interestOps(SelectionKey.OP_READ);
+                        selector.wakeup(); // might not be necessary w/ select timeout
+                    });
+
 
                     //System.out.println("Rcvd message, sending [" + hash + "] back to client.");
+
+                    /*
 
                     buffer.clear();
                     //buffer = ByteBuffer.wrap(hash.getBytes());
                     buffer = ByteBuffer.wrap(ret);
                     client.write(buffer);
                     buffer.clear();
+
+                    */
                 }
 
             } catch (IOException e) {
@@ -88,7 +131,7 @@ public class Server {
         int portNum = -1;
         int numThreads = -1;
         int batchSize = -1;
-        int batchTime = -1;
+        double batchTime = -1;
 
         if (pargs.length != 4) {
             printUsage();
@@ -100,7 +143,7 @@ public class Server {
             portNum = Integer.parseInt(pargs[0]);
             numThreads = Integer.parseInt(pargs[1]);
             batchSize = Integer.parseInt(pargs[2]);
-            batchTime = Integer.parseInt(pargs[3]);
+            batchTime = Double.parseDouble(pargs[3]);
         } catch (NumberFormatException e) {
             parseSuccess = false;
         } finally {
@@ -119,8 +162,7 @@ public class Server {
                 parseSuccess = false;
             }
 
-            if (batchTime < 1) {
-                // TODO: what about non integer times, is that allowed?
+            if (batchTime <= 0.0) {
                 System.out.println("Invalid batch time \"" + pargs[3] + "\"");
                 parseSuccess = false;
             }
@@ -131,7 +173,6 @@ public class Server {
             return;
         }
 
-        Selector selector;
         ServerSocketChannel serverSocket;
 
         try {
@@ -156,8 +197,11 @@ public class Server {
         while (true) {
             try {
                 //System.out.println("blocking on select.");
-                //int selected = selector.select(100);
-                int selected = selector.select();
+                int selected = selector.select(100);
+
+                if (selected == 0) {
+                    continue;
+                }
 
                 //if (selected != 0) {
                 //    System.out.println("Selected " + selected + " keys.");
@@ -176,7 +220,7 @@ public class Server {
 
                     if (key.isAcceptable()){
                         //System.out.println("got acceptable key");
-                        handleAcceptation(selector, serverSocket.accept());
+                        handleAcceptation(key);
                     }
 
                     if (key.isReadable()) {

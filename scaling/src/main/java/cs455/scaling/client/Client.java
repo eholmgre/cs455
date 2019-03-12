@@ -41,13 +41,13 @@ public class Client {
         }
 
         InetSocketAddress serverAddr = null;
-        int messageRate = -1;
+        double messageRate = -1;
 
         boolean parseSuccess = true;
         try {
             int serverPort = -1;
             serverPort = Integer.parseInt(pargs[1]);
-            messageRate = Integer.parseInt(pargs[2]);
+            messageRate = Double.parseDouble(pargs[2]);
 
             serverAddr = new InetSocketAddress(pargs[0], serverPort);
 
@@ -60,7 +60,7 @@ public class Client {
                 parseSuccess = false;
             }
 
-            if (messageRate < 1) {
+            if (messageRate <= 0.0) {
                 System.out.println("Invalid message rate \"" + pargs[2] + "\"");
                 parseSuccess = false;
             }
@@ -73,20 +73,20 @@ public class Client {
 
         Selector selector;
 
-        final int rate = messageRate;
+        final double rate = messageRate;
 
         Thread senderThread = new Thread(() -> {
             ByteBuffer buffer;
             try {
                 while (! Thread.currentThread().isInterrupted()) {
-                    //byte []message = MessageMaker.createMessage();
-                    byte []message = MessageMaker.readableMessage();
+                    byte []message = MessageMaker.createMessage();
+                    //byte []message = MessageMaker.readableMessage();
                     buffer = ByteBuffer.wrap(message);
 
                     String hash = Hasher.SHA1FromBytes(message);
 
-                    //System.out.println("Sending message with hash [" + hash + "]");
-                    System.out.println("Sending  [" + new String(message) + "]");
+                    System.out.println("Sending message with hash [" + hash + "]");
+                    //System.out.println("Sending  [" + new String(message) + "]");
 
                     synchronized (hashes) {
                         hashes.add(hash);
@@ -95,7 +95,7 @@ public class Client {
                     server.write(buffer);
                     buffer.clear();
 
-                    Thread.sleep(1000 / rate);
+                    Thread.sleep((long) (1000.0 / rate));
                 }
             } catch (IOException e) {
                 System.out.println("Error in sender thread: " + e.getMessage());
@@ -157,8 +157,10 @@ public class Client {
 
         server.read(buffer);
 
+        buffer.flip();
+
         String resp = new String(buffer.array());
-        System.out.println("received [" + resp + "]");
+        //System.out.println("received [" + resp + "]");
         buffer.clear();
 
         boolean found = false;
@@ -174,12 +176,13 @@ public class Client {
                 if (hash.equals(resp)) {
                     iter.remove();
                     found = true;
+                    System.out.println("removed hash from linked list");
                     break;
                 }
             }
 
             if (! found) {
-                //System.out.println("got response not in hash list: [" + base64.encodeToString(resp.getBytes()) + "]");
+                System.out.println("got response not in hash list: [" + resp + "]");
             }
         }
     }

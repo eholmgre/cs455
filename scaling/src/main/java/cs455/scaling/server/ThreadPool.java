@@ -35,13 +35,13 @@ public class ThreadPool {
 
     private class Batcher {
         private int batchSize;
-        private int batchTime;
+        private double batchTime;
 
         private Timer timer;
 
         private Batch current;
 
-        public Batcher(int size, int time) {
+        public Batcher(int size, double time) {
             batchSize = size;
             batchTime = time;
         }
@@ -66,7 +66,7 @@ public class ThreadPool {
                             System.out.println("Could not add batch to queue after batch time");
                         }
                     }
-                }, batchTime * 1000);
+                }, (int) (batchTime * 1000));
             }
 
             current.add(t);
@@ -92,7 +92,7 @@ public class ThreadPool {
     private final boolean debug;
 
 
-    public ThreadPool(int numThreads, int batchSize, int batchTime) {
+    public ThreadPool(int numThreads, int batchSize, double batchTime) {
         this.numThreads = numThreads;
         threads = new LinkedList<>();
         taskQueue = new LinkedBlockingQueue<>();
@@ -100,7 +100,7 @@ public class ThreadPool {
         debug = false;
     }
 
-    public ThreadPool(int numThreads, int batchSize, int batchTime, boolean debug) {
+    public ThreadPool(int numThreads, int batchSize, double batchTime, boolean debug) {
         this.numThreads = numThreads;
         threads = new LinkedList<>();
         taskQueue = new LinkedBlockingQueue<>();
