@@ -19,7 +19,6 @@ public class Client {
     private String []pargs;
 
     private SocketChannel server;
-    //private ByteBuffer buffer;
 
     private final LinkedList<String> hashes;
 
@@ -33,7 +32,6 @@ public class Client {
     }
 
     public void start() {
-        // java cs455.scaling.server.Client server-host server-port message-rate
 
         if (pargs.length != 3) {
             printUsage();
@@ -80,13 +78,11 @@ public class Client {
             try {
                 while (! Thread.currentThread().isInterrupted()) {
                     byte []message = MessageMaker.createMessage();
-                    //byte []message = MessageMaker.readableMessage();
                     buffer = ByteBuffer.wrap(message);
 
                     String hash = Hasher.SHA1FromBytes(message);
 
                     System.out.println("Sending message with hash [" + hash + "]");
-                    //System.out.println("Sending  [" + new String(message) + "]");
 
                     synchronized (hashes) {
                         hashes.add(hash);
@@ -103,7 +99,7 @@ public class Client {
                 System.out.println("Sender thread interrupted");
                 Thread.currentThread().interrupt();
             } catch (NoSuchAlgorithmException e) {
-                System.out.printf("Hashing Error: " + e.getMessage());
+                System.out.println("Hashing Error: " + e.getMessage());
             }
         });
 
@@ -118,7 +114,7 @@ public class Client {
 
 
             while (true) {
-                int selected = selector.select();
+                int selected = selector.select(100);
 
                 //if (selected != 0) {
                 //    System.out.println("Selected " + selected + " keys.");
@@ -155,13 +151,18 @@ public class Client {
         ByteBuffer buffer = ByteBuffer.allocate(40);
         SocketChannel server = (SocketChannel) key.channel();
 
-        server.read(buffer);
+        int bytesRead;
+
+        synchronized (server) {
+            bytesRead = server.read(buffer);
+        }
+
+        byte []message = new byte[bytesRead];
 
         buffer.flip();
+        buffer.get(message);
 
-        String resp = new String(buffer.array());
-        //System.out.println("received [" + resp + "]");
-        buffer.clear();
+        String resp = new String(message);
 
         boolean found = false;
 
@@ -170,8 +171,6 @@ public class Client {
 
             while (iter.hasNext()) {
                 String hash = iter.next();
-
-                //System.out.println(hash + " vs " + resp);
 
                 if (hash.equals(resp)) {
                     iter.remove();

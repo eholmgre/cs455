@@ -10,6 +10,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.Set;
@@ -20,6 +21,32 @@ public class Server {
     private ThreadPool pool;
 
     private Selector selector;
+
+    private class KeyData {
+        private boolean accepted;
+        private boolean read;
+
+        public KeyData(boolean accepted, boolean read) {
+            this.accepted = accepted;
+            this.read = read;
+        }
+
+        public boolean isAccepted() {
+            return accepted;
+        }
+
+        public boolean isRead() {
+            return read;
+        }
+
+        public void accept() {
+            accepted = true;
+        }
+
+        public void read() {
+            read = true;
+        }
+    }
 
     public Server(String []args) {
         pargs = args;
@@ -32,11 +59,25 @@ public class Server {
     private void handleAcceptation(SelectionKey key) {
         pool.add(() -> {
             try {
+                if (key.attachment() == null) {
+                    key.attach(new KeyData(false, false));
+                } else {
+                    if (((KeyData)key.attachment()).isAccepted()) {
+                        return;
+                    }
+                }
+
                 ServerSocketChannel server = (ServerSocketChannel) key.channel();
                 SocketChannel client = server.accept();
+                if (client == null) {
+                    System.out.println("client null what the hell");
+                    return;
+                }
                 client.configureBlocking(false);
                 client.register(selector, SelectionKey.OP_READ);
                 System.out.println("Client registered");
+
+                ((KeyData) key.attachment()).accept();
             } catch (IOException e) {
                 System.out.println("Error accepting connection: " + e.getMessage());
             } catch (NullPointerException e) {
@@ -48,73 +89,73 @@ public class Server {
     private void handleMessage(SelectionKey k) {
         pool.add(() -> {
             try {
-                //ByteBuffer buffer = ByteBuffer.allocate(9 * 1024); // better safe than sorry
+
+                if (k.attachment() == null) {
+                    k.attach(new KeyData(false, false));
+                } else {
+                    if (((KeyData)k.attachment()).isRead()) {
+                        return;
+                    }
+                }
+
                 ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
                 SocketChannel client = (SocketChannel) k.channel();
 
-                int bytesRead = 0;
+                int bytesRead;
 
                 synchronized (client) {
                     bytesRead = client.read(buffer);
                 }
 
-                buffer.flip(); // is this necessary?
+                buffer.flip();
 
                 if (bytesRead == -1) {
                     client.close();
                     System.out.println("Client unregistered");
                 } else {
 
-                    byte []message = buffer.array();
-                    //System.out.println("received [" + new String(message) + "]");
+                    byte []message = new byte[bytesRead];
+
+                    buffer.get(message);
 
                     String hash = Hasher.SHA1FromBytes(message);
 
                     //todo: actually figure out the problem
-                    if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284") || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")) {
+                    if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284")
+                    || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")
+                    || hash.equals("da39a3ee5e6b4b0d3255bfef95601890afd80709")) {
                         System.out.println("aww hell");
                         return;
                     }
 
                     System.out.println("received message with hash [" + hash + "]");
 
-                    //byte []ret = MessageMaker.readableMessage2();
-
+                    // lambda classes on lambda classes - basically functional programming
                     pool.add(() -> {
-                        // should i be synchronizing on k?
-                        k.interestOps(SelectionKey.OP_WRITE);
+                        synchronized (k) { // is this necessary?
+                            k.interestOps(SelectionKey.OP_WRITE);
 
-                        byte []reply = hash.getBytes();
-                        //byte []reply = ret;
-                        System.out.println("sending  [" + new String(reply) + "]");
+                            byte[] reply = hash.getBytes();
+                            System.out.println("sending  [" + new String(reply) + "]");
 
-                        ByteBuffer sendBuf = ByteBuffer.wrap(reply);
+                            ByteBuffer sendBuf = ByteBuffer.wrap(reply);
 
-                        try {
+                            try {
 
-                            synchronized (client) {
-                                client.write(sendBuf);
+                                synchronized (client) {
+                                    client.write(sendBuf);
+                                }
+                            } catch (IOException e) {
+                                System.out.println("IOException when sending reply: " + e.getMessage());
                             }
-                        } catch (IOException e) {
-                            System.out.println("IOException when sending reply: " + e.getMessage());
-                        }
 
-                        k.interestOps(SelectionKey.OP_READ);
-                        selector.wakeup(); // might not be necessary w/ select timeout
+                            k.interestOps(SelectionKey.OP_READ);
+                            selector.wakeup(); // dont think this be necessary w/ select timeout
+                        }
                     });
 
+                    ((KeyData)k.attachment()).read();
 
-                    //System.out.println("Rcvd message, sending [" + hash + "] back to client.");
-
-                    /*
-
-                    buffer.clear();
-                    //buffer = ByteBuffer.wrap(hash.getBytes());
-                    buffer = ByteBuffer.wrap(ret);
-                    client.write(buffer);
-                    buffer.clear();
-
-                    */
                 }
 
             } catch (IOException e) {
@@ -196,7 +237,6 @@ public class Server {
 
         while (true) {
             try {
-                //System.out.println("blocking on select.");
                 int selected = selector.select(100);
 
                 if (selected == 0) {
@@ -219,12 +259,10 @@ public class Server {
                     }
 
                     if (key.isAcceptable()){
-                        //System.out.println("got acceptable key");
                         handleAcceptation(key);
                     }
 
                     if (key.isReadable()) {
-                        //System.out.println("got message key");
                         handleMessage(key);
                     }
 
