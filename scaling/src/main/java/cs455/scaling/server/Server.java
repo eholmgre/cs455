@@ -38,7 +38,10 @@ public class Server {
             try {
 
                 ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                SocketChannel client = server.accept();
+                SocketChannel client;
+                synchronized (server) {
+                    client = server.accept();
+                }
 
                 if (client == null) {
                     System.out.println("client is null");
@@ -54,7 +57,7 @@ public class Server {
 
                 stats.register(client);
 
-                client.register(selector, SelectionKey.OP_READ);
+                client.register(key.selector(), SelectionKey.OP_READ);
                 System.out.println("Client registered");
 
             } catch (IOException e) {
@@ -67,10 +70,9 @@ public class Server {
         pool.add(() -> {
             try {
                 synchronized (k) {
-
                     ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
                     SocketChannel client = (SocketChannel) k.channel();
-                    client.register(selector, k.interestOps() & ~SelectionKey.OP_READ);
+                    //client.register(selector, k.interestOps() & ~SelectionKey.OP_READ);
 
                     int bytesRead;
 
@@ -110,7 +112,7 @@ public class Server {
                         // lambda classes in lambda classes - basically functional programming
                         pool.add(() -> {
                             synchronized (k) { // is this necessary?
-                                //k.interestOps(SelectionKey.OP_WRITE);
+                                k.interestOps(SelectionKey.OP_WRITE);
 
                                 byte[] reply = hash.getBytes();
                                 //System.out.println("sending  [" + new String(reply) + "]");
@@ -123,7 +125,7 @@ public class Server {
                                         client.write(sendBuf);
                                     }
 
-                                    client.register(selector, k.interestOps() & ~SelectionKey.OP_ACCEPT);
+                                    //client.register(selector, k.interestOps() & ~SelectionKey.OP_ACCEPT);
 
                                 } catch (IOException e) {
                                     System.out.println("IOException when sending reply: " + e.getMessage());
@@ -131,12 +133,12 @@ public class Server {
 
                                 stats.incSent(client);
 
-                                //k.interestOps(SelectionKey.OP_READ);
-                                selector.wakeup(); // dont think this be necessary w/ select timeout
+                                k.interestOps(SelectionKey.OP_READ);
+                                //selector.wakeup(); // dont think this be necessary w/ select timeout
                             }
                         });
 
-                        selector.wakeup(); // just for good measure
+                        //selector.wakeup(); // just for good measure
 
 
                     }
@@ -253,14 +255,13 @@ public class Server {
 
                     if (! key.isValid()) {
                         System.out.println("got invalid key");
-                        continue;
                     }
 
-                    if (key.isAcceptable()){
+                    else if (key.isAcceptable()){
                         handleAcceptation(key);
                     }
 
-                    if (key.isReadable()) {
+                    else if (key.isReadable()) {
                         handleMessage(key);
                     }
 
