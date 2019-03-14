@@ -123,7 +123,7 @@ public class ServerStats {
         }
 
 
-        return Math.pow(sum / accepted.size(), 0.5) / 20; // std per sec?
+        return Math.pow(sum / accepted.size() - 1, 0.5) / 20; // std per sec?
     }
 
     private synchronized void reset() {

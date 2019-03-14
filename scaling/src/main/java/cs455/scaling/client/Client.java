@@ -218,7 +218,7 @@ public class Client {
             }
 
             if (! found) {
-                System.out.println("got response not in hash list: [" + resp + "]");
+                stats.incIncorect();
             }
         }
     }
