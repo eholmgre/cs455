@@ -47,7 +47,7 @@ public class Server {
                 }
 
                 if (client == null) {
-                    System.out.println("client is null");
+                    //System.out.println("client is null");
                     return;
                 }
 
@@ -103,7 +103,7 @@ public class Server {
                         if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284")
                                 || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")
                                 || hash.equals("da39a3ee5e6b4b0d3255bfef95601890afd80709")) {
-                            System.out.println("received bogus message");
+                            //System.out.println("received bogus message");
                             return;
                         }
 
@@ -238,7 +238,7 @@ public class Server {
 
         while (true) {
             try {
-                int selected = selector.select();
+                int selected = selector.select(100);
 
                 if (selected == 0) {
                     continue;

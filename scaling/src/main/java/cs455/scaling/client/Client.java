@@ -147,7 +147,7 @@ public class Client {
 
 
             while (true) {
-                int selected = selector.select();
+                int selected = selector.select(100);
 
                 //if (selected != 0) {
                 //    System.out.println("Selected " + selected + " keys.");
