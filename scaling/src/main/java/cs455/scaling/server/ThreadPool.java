@@ -1,5 +1,6 @@
 package cs455.scaling.server;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -89,6 +90,8 @@ public class ThreadPool {
     private LinkedList<Thread> threads;
     private LinkedBlockingQueue<Batch> taskQueue;
 
+    private HashMap<Integer, Boolean> working;
+
     private Batcher batcher;
 
     private final boolean debug;
@@ -99,6 +102,7 @@ public class ThreadPool {
         threads = new LinkedList<>();
         taskQueue = new LinkedBlockingQueue<>();
         batcher = new Batcher(batchSize, batchTime);
+        working = new HashMap<>();
         debug = false;
     }
 
@@ -107,6 +111,7 @@ public class ThreadPool {
         threads = new LinkedList<>();
         taskQueue = new LinkedBlockingQueue<>();
         batcher = new Batcher(batchSize, batchTime);
+        working = new HashMap<>();
         this.debug = debug;
     }
 
@@ -127,10 +132,16 @@ public class ThreadPool {
             try {
                 while (! Thread.currentThread().isInterrupted()) { // maybe just a while true?
                     Batch b = taskQueue.take();
+                    synchronized (working) {
+                        working.put(id, true);
+                    }
                     if (debug) System.out.println("thread " + id + " running batch");
 
                     while (b.hasTask() && ! Thread.currentThread().isInterrupted()) {
                         b.next().run();
+                    }
+                    synchronized (working) {
+                        working.put(id, false);
                     }
 
                 }
@@ -147,10 +158,24 @@ public class ThreadPool {
         return taskQueue.size();
     }
 
+    public String workingThreads() {
+        StringBuilder sb = new StringBuilder();
+        synchronized (working) {
+            for (int i : working.keySet()) {
+                if (working.get(i)) {
+                    sb.append(i + ", ");
+                }
+            }
+        }
+
+        return sb.toString() + " (of " + threads.size() + ")";
+    }
+
 
     public void start() {
         for (int i = 0; i < numThreads; ++i) {
             threads.add(new Thread(new WorkerThread(i)));
+            working.put(i, false);
         }
 
         for (Thread t : threads) {

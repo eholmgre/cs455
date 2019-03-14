@@ -220,9 +220,9 @@ public class Server {
         debugTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                System.out.println("pending tasks: " + pool.numberPendingTasks());
+                System.out.println("pending tasks: " + pool.numberPendingTasks() + "\tworking threads: " + pool.workingThreads());
             }
-        }, 0, 5 * 1000);
+        }, 0, 250);
 
 
         // NIO loop
