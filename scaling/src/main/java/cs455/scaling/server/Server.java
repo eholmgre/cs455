@@ -59,9 +59,8 @@ public class Server {
                 client.configureBlocking(false);
 
                 stats.register(client);
-
-                client.register(key.selector(), SelectionKey.OP_READ);
-                System.out.println("Client registered");
+                client.register(selector, SelectionKey.OP_READ);
+                //System.out.println("Client registered");
 
             } catch (IOException e) {
                 System.out.println("Error accepting connection: " + e.getMessage());
@@ -91,7 +90,7 @@ public class Server {
 
                         // can you close something while syncing on it?
                         client.close();
-                        System.out.println("Client unregistered");
+                        //System.out.println("Client unregistered");
                     } else {
 
                         byte[] message = new byte[bytesRead];
