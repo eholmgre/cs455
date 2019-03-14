@@ -12,20 +12,21 @@ import java.util.TimerTask;
 
 public class Tests {
 
+    //@Test
     @Ignore
     public void testThreadPool() {
-        ThreadPool tp = new ThreadPool(10, 5, 2, true);
+        ThreadPool tp = new ThreadPool(10, 10, 10, true);
 
         Random r = new Random();
 
         Timer t = new Timer();
 
-        t.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                Assert.fail();
-            }
-        }, 75 * 1000);
+        //t.schedule(new TimerTask() {
+        //    @Override
+        //    public void run() {
+        //        Assert.fail();
+        //    }
+        //}, 75 * 1000);
 
         tp.start();
 
@@ -48,7 +49,7 @@ public class Tests {
                 });
                 System.out.println("Added A " + num);
 
-                Thread.sleep(200);
+                Thread.sleep(1000);
 
 
                 tp.add(() -> {
@@ -63,7 +64,7 @@ public class Tests {
                 });
                 System.out.println("Added B " + num);
 
-                Thread.sleep(300);
+                Thread.sleep(1000);
 
                 tp.add(() -> {
                     System.out.println("C " + num);
@@ -78,7 +79,7 @@ public class Tests {
                 System.out.println("Added C " + num);
 
 
-                Thread.sleep(r.nextInt(1000));
+                Thread.sleep(r.nextInt(5000));
 
 
             } catch (InterruptedException e) {

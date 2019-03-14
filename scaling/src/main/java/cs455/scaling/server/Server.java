@@ -24,9 +24,12 @@ public class Server {
 
     private ServerStats stats;
 
-    public Server(String []args) {
+    private boolean debug;
+
+    public Server(String []args, boolean debug) {
         pargs = args;
         stats = new ServerStats();
+        this.debug = debug;
     }
 
     public void printUsage() {
@@ -217,12 +220,14 @@ public class Server {
 
         Timer debugTimer = new Timer();
 
-        debugTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                System.out.println("pending tasks: " + pool.numberPendingTasks() + "\tworking threads: " + pool.workingThreads());
-            }
-        }, 0, 250);
+        if (debug) {
+            debugTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    System.out.println("pending tasks: " + pool.numberPendingTasks() + "\tworking threads: " + pool.workingThreads());
+                }
+            }, 0, 250);
+        }
 
 
         // NIO loop
@@ -264,7 +269,9 @@ public class Server {
             } catch (IOException e) {
                 System.out.println("Error in NIO loop: " + e.getMessage());
 
-                debugTimer.cancel();
+                if (debug) {
+                    debugTimer.cancel();
+                }
                 stats.stop();
                 return;
             }
@@ -274,7 +281,7 @@ public class Server {
 
 
     public static void main(String []args) {
-        Server server = new Server(args);
+        Server server = new Server(args, false);
 
         server.start();
     }
