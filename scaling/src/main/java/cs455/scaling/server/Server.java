@@ -41,12 +41,12 @@ public class Server {
                 SocketChannel client = server.accept();
 
                 if (client == null) {
-                    //System.out.println("client is null");
+                    System.out.println("client is null");
                     return;
                 }
 
                 if (stats.isRegistered(client)) {
-                    //System.out.println("client already registered");
+                    System.out.println("client already registered");
                     return;
                 }
 
@@ -70,6 +70,7 @@ public class Server {
 
                     ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
                     SocketChannel client = (SocketChannel) k.channel();
+                    client.register(selector, k.interestOps() & ~SelectionKey.OP_READ);
 
                     int bytesRead;
 
@@ -98,7 +99,7 @@ public class Server {
                         if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284")
                                 || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")
                                 || hash.equals("da39a3ee5e6b4b0d3255bfef95601890afd80709")) {
-                            //System.out.println("received bogus message");
+                            System.out.println("received bogus message");
                             return;
                         }
 
@@ -122,6 +123,8 @@ public class Server {
                                         client.write(sendBuf);
                                     }
 
+                                    client.register(selector, k.interestOps() & ~SelectionKey.OP_ACCEPT);
+
                                 } catch (IOException e) {
                                     System.out.println("IOException when sending reply: " + e.getMessage());
                                 }
@@ -137,6 +140,7 @@ public class Server {
 
 
                     }
+
                 }
 
             } catch (IOException e) {
