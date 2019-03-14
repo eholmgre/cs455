@@ -41,15 +41,18 @@ public class Server {
             try {
 
                 ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                SocketChannel client = server.accept();
+                SocketChannel client;
+                synchronized (server) {
+                    client = server.accept();
+                }
 
                 if (client == null) {
-                    //System.out.println("client is null");
+                    System.out.println("client is null");
                     return;
                 }
 
                 if (stats.isRegistered(client)) {
-                    //System.out.println("client already registered");
+                    System.out.println("client already registered");
                     return;
                 }
 
@@ -57,7 +60,7 @@ public class Server {
 
                 stats.register(client);
 
-                client.register(selector, SelectionKey.OP_READ);
+                client.register(key.selector(), SelectionKey.OP_READ);
                 System.out.println("Client registered");
 
             } catch (IOException e) {
@@ -70,9 +73,9 @@ public class Server {
         pool.add(() -> {
             try {
                 synchronized (k) {
-
                     ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
                     SocketChannel client = (SocketChannel) k.channel();
+                    //client.register(selector, k.interestOps() & ~SelectionKey.OP_READ);
 
                     int bytesRead;
 
@@ -101,7 +104,7 @@ public class Server {
                         if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284")
                                 || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")
                                 || hash.equals("da39a3ee5e6b4b0d3255bfef95601890afd80709")) {
-                            //System.out.println("received bogus message");
+                            System.out.println("received bogus message");
                             return;
                         }
 
@@ -109,7 +112,7 @@ public class Server {
 
                         stats.incRcvd(client);
 
-                        // lambda classes on lambda classes - basically functional programming
+                        // lambda classes in lambda classes - basically functional programming
                         pool.add(() -> {
                             synchronized (k) { // is this necessary?
                                 k.interestOps(SelectionKey.OP_WRITE);
@@ -124,6 +127,8 @@ public class Server {
                                     synchronized (client) {
                                         client.write(sendBuf);
                                     }
+
+                                    //client.register(selector, k.interestOps() & ~SelectionKey.OP_ACCEPT);
 
                                 } catch (IOException e) {
                                     System.out.println("IOException when sending reply: " + e.getMessage());
@@ -140,6 +145,7 @@ public class Server {
 
 
                     }
+
                 }
 
             } catch (IOException e) {
@@ -229,12 +235,11 @@ public class Server {
             }, 0, 250);
         }
 
-
         // NIO loop
 
         while (true) {
             try {
-                int selected = selector.select(100);
+                int selected = selector.select();
 
                 if (selected == 0) {
                     continue;
@@ -252,14 +257,13 @@ public class Server {
 
                     if (! key.isValid()) {
                         System.out.println("got invalid key");
-                        continue;
                     }
 
-                    if (key.isAcceptable()){
+                    else if (key.isAcceptable()){
                         handleAcceptation(key);
                     }
 
-                    if (key.isReadable()) {
+                    else if (key.isReadable()) {
                         handleMessage(key);
                     }
 
