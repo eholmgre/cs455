@@ -12,6 +12,8 @@ import java.nio.channels.SocketChannel;
 import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Server {
 
@@ -64,75 +66,77 @@ public class Server {
     private void handleMessage(SelectionKey k) {
         pool.add(() -> {
             try {
+                synchronized (k) {
 
-                ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
-                SocketChannel client = (SocketChannel) k.channel();
+                    ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
+                    SocketChannel client = (SocketChannel) k.channel();
 
-                int bytesRead;
+                    int bytesRead;
 
-                synchronized (client) {
-                    bytesRead = client.read(buffer);
-                }
-
-                buffer.flip();
-
-                if (bytesRead == -1) {
-
-                    stats.deRegister(client);
-
-                    // can you close something while syncing on it?
-                    client.close();
-                    System.out.println("Client unregistered");
-                } else {
-
-                    byte []message = new byte[bytesRead];
-
-                    buffer.get(message);
-
-                    String hash = Hasher.SHA1FromBytes(message);
-
-                    //todo: actually figure out the problem
-                    if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284")
-                    || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")
-                    || hash.equals("da39a3ee5e6b4b0d3255bfef95601890afd80709")) {
-                        //System.out.println("received bogus message");
-                        return;
+                    synchronized (client) {
+                        bytesRead = client.read(buffer);
                     }
 
-                    //System.out.println("received message with hash [" + hash + "]");
+                    buffer.flip();
 
-                    stats.incRcvd(client);
+                    if (bytesRead == -1) {
 
-                    // lambda classes on lambda classes - basically functional programming
-                    pool.add(() -> {
-                        synchronized (k) { // is this necessary?
-                            k.interestOps(SelectionKey.OP_WRITE);
+                        stats.deRegister(client);
 
-                            byte[] reply = hash.getBytes();
-                            //System.out.println("sending  [" + new String(reply) + "]");
+                        // can you close something while syncing on it?
+                        client.close();
+                        System.out.println("Client unregistered");
+                    } else {
 
-                            ByteBuffer sendBuf = ByteBuffer.wrap(reply);
+                        byte[] message = new byte[bytesRead];
 
-                            try {
+                        buffer.get(message);
 
-                                synchronized (client) {
-                                    client.write(sendBuf);
+                        String hash = Hasher.SHA1FromBytes(message);
+
+                        //todo: actually figure out the problem
+                        if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284")
+                                || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")
+                                || hash.equals("da39a3ee5e6b4b0d3255bfef95601890afd80709")) {
+                            //System.out.println("received bogus message");
+                            return;
+                        }
+
+                        //System.out.println("received message with hash [" + hash + "]");
+
+                        stats.incRcvd(client);
+
+                        // lambda classes on lambda classes - basically functional programming
+                        pool.add(() -> {
+                            synchronized (k) { // is this necessary?
+                                k.interestOps(SelectionKey.OP_WRITE);
+
+                                byte[] reply = hash.getBytes();
+                                //System.out.println("sending  [" + new String(reply) + "]");
+
+                                ByteBuffer sendBuf = ByteBuffer.wrap(reply);
+
+                                try {
+
+                                    synchronized (client) {
+                                        client.write(sendBuf);
+                                    }
+
+                                } catch (IOException e) {
+                                    System.out.println("IOException when sending reply: " + e.getMessage());
                                 }
 
-                            } catch (IOException e) {
-                                System.out.println("IOException when sending reply: " + e.getMessage());
+                                stats.incSent(client);
+
+                                k.interestOps(SelectionKey.OP_READ);
+                                //selector.wakeup(); // dont think this be necessary w/ select timeout
                             }
+                        });
 
-                            stats.incSent(client);
-
-                            k.interestOps(SelectionKey.OP_READ);
-                            //selector.wakeup(); // dont think this be necessary w/ select timeout
-                        }
-                    });
-
-                    //selector.wakeup(); // just for good measure
+                        //selector.wakeup(); // just for good measure
 
 
+                    }
                 }
 
             } catch (IOException e) {
@@ -211,6 +215,15 @@ public class Server {
         pool = new ThreadPool(numThreads, batchSize, batchTime);
         pool.start();
 
+        Timer debugTimer = new Timer();
+
+        debugTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                System.out.println("pending tasks: " + pool.numberPendingTasks());
+            }
+        }, 0, 5 * 1000);
+
 
         // NIO loop
 
@@ -250,6 +263,8 @@ public class Server {
 
             } catch (IOException e) {
                 System.out.println("Error in NIO loop: " + e.getMessage());
+
+                debugTimer.cancel();
                 stats.stop();
                 return;
             }

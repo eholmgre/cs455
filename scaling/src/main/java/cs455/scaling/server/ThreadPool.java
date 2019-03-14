@@ -20,7 +20,9 @@ public class ThreadPool {
         }
 
         public void add(Task t) {
-            stuffToDo.add(t);
+            if (!stuffToDo.offer(t)) {
+                System.out.println("could not add task to batch (queue length " + stuffToDo.size() + ")");
+            }
         }
 
         public boolean hasTask() {
@@ -139,6 +141,10 @@ public class ThreadPool {
                 Thread.currentThread().interrupt();
             }
         }
+    }
+
+    public long numberPendingTasks() {
+        return taskQueue.size();
     }
 
 
