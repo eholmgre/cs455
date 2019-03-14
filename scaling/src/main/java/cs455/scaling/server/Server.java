@@ -106,10 +106,10 @@ public class Server {
 
                         stats.incRcvd(client);
 
-                        // lambda classes on lambda classes - basically functional programming
+                        // lambda classes in lambda classes - basically functional programming
                         pool.add(() -> {
                             synchronized (k) { // is this necessary?
-                                k.interestOps(SelectionKey.OP_WRITE);
+                                //k.interestOps(SelectionKey.OP_WRITE);
 
                                 byte[] reply = hash.getBytes();
                                 //System.out.println("sending  [" + new String(reply) + "]");
@@ -128,7 +128,7 @@ public class Server {
 
                                 stats.incSent(client);
 
-                                k.interestOps(SelectionKey.OP_READ);
+                                //k.interestOps(SelectionKey.OP_READ);
                                 //selector.wakeup(); // dont think this be necessary w/ select timeout
                             }
                         });
@@ -229,7 +229,7 @@ public class Server {
 
         while (true) {
             try {
-                int selected = selector.select(100);
+                int selected = selector.select();
 
                 if (selected == 0) {
                     continue;

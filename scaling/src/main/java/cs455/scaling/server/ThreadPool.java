@@ -159,16 +159,16 @@ public class ThreadPool {
     }
 
     public String workingThreads() {
-        StringBuilder sb = new StringBuilder();
+        int numWorking = 0;
         synchronized (working) {
             for (int i : working.keySet()) {
                 if (working.get(i)) {
-                    sb.append(i + ", ");
+                    ++numWorking;
                 }
             }
         }
 
-        return sb.toString() + " (of " + threads.size() + ")";
+        return numWorking + " / " + threads.size();
     }
 
 
