@@ -39,11 +39,11 @@ public class Server {
                 SocketChannel client = server.accept();
 
                 if (client == null) {
-                    System.out.println("is client null");
+                    System.out.println("client is null");
                     return;
                 }
 
-                if (! stats.isRegistered(client)) {
+                if (stats.isRegistered(client)) {
                     System.out.println("client already registered");
                     return;
                 }
@@ -95,11 +95,11 @@ public class Server {
                     if (hash.equals("e1634a16621e3c08ffa8b1379c241fe04cdae284")
                     || hash.equals("0631457264ff7f8d5fb1edc2c0211992a67c73e6")
                     || hash.equals("da39a3ee5e6b4b0d3255bfef95601890afd80709")) {
-                        System.out.println("aww hell");
+                        //System.out.println("received bogus message");
                         return;
                     }
 
-                    System.out.println("received message with hash [" + hash + "]");
+                    //System.out.println("received message with hash [" + hash + "]");
 
                     stats.incRcvd(client);
 
@@ -109,7 +109,7 @@ public class Server {
                             k.interestOps(SelectionKey.OP_WRITE);
 
                             byte[] reply = hash.getBytes();
-                            System.out.println("sending  [" + new String(reply) + "]");
+                            //System.out.println("sending  [" + new String(reply) + "]");
 
                             ByteBuffer sendBuf = ByteBuffer.wrap(reply);
 
@@ -126,11 +126,11 @@ public class Server {
                             stats.incSent(client);
 
                             k.interestOps(SelectionKey.OP_READ);
-                            selector.wakeup(); // dont think this be necessary w/ select timeout
+                            //selector.wakeup(); // dont think this be necessary w/ select timeout
                         }
                     });
 
-                    selector.wakeup(); // just for good measure
+                    //selector.wakeup(); // just for good measure
 
 
                 }
@@ -216,7 +216,7 @@ public class Server {
 
         while (true) {
             try {
-                int selected = selector.select();
+                int selected = selector.select(100);
 
                 if (selected == 0) {
                     continue;
@@ -250,8 +250,11 @@ public class Server {
 
             } catch (IOException e) {
                 System.out.println("Error in NIO loop: " + e.getMessage());
+                stats.stop();
+                return;
             }
         }
+
     }
 
 

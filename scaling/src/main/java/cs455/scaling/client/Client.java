@@ -22,9 +22,12 @@ public class Client {
 
     private final LinkedList<String> hashes;
 
+    private ClientStats stats;
+
     public Client(String []args) {
         pargs = args;
         hashes = new LinkedList<>();
+        stats = new ClientStats();
     }
 
     public void printUsage() {
@@ -71,6 +74,8 @@ public class Client {
 
         Selector selector;
 
+        stats.start();
+
         final double rate = messageRate;
 
         Thread senderThread = new Thread(() -> {
@@ -82,7 +87,7 @@ public class Client {
 
                     String hash = Hasher.SHA1FromBytes(message);
 
-                    System.out.println("Sending message with hash [" + hash + "]");
+                    //System.out.println("Sending message with hash [" + hash + "]");
 
                     synchronized (hashes) {
                         hashes.add(hash);
@@ -91,10 +96,13 @@ public class Client {
                     server.write(buffer);
                     buffer.clear();
 
+                    stats.incSent();
+
                     Thread.sleep((long) (1000.0 / rate));
                 }
             } catch (IOException e) {
                 System.out.println("Error in sender thread: " + e.getMessage());
+                stats.stop();
             } catch (InterruptedException e) {
                 System.out.println("Sender thread interrupted");
                 Thread.currentThread().interrupt();
@@ -144,7 +152,9 @@ public class Client {
 
         } catch (IOException e) {
             System.out.println("Error in message loop: " + e.getMessage());
+            stats.stop();
         }
+
     }
 
     private void handleReadable(SelectionKey key) throws IOException { //todo: delegate this to separate thread?
@@ -162,6 +172,8 @@ public class Client {
         buffer.flip();
         buffer.get(message);
 
+        stats.incRcvd(); // should i count messages that can't be matched?
+
         String resp = new String(message);
 
         boolean found = false;
@@ -175,7 +187,7 @@ public class Client {
                 if (hash.equals(resp)) {
                     iter.remove();
                     found = true;
-                    System.out.println("removed hash from linked list");
+                    //System.out.println("removed hash from linked list");
                     break;
                 }
             }

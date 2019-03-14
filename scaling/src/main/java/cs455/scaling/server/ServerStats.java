@@ -147,12 +147,16 @@ public class ServerStats {
         statsTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                System.out.print("[" + new SimpleDateFormat("HH.mm.ss").format(new Date()));
+                System.out.print("[" + new SimpleDateFormat("HH:mm:ss").format(new Date()));
                 System.out.print("] Server Throughput: " + totalSent / 20.0 + "m/s, Active Clients: " + accepted.size());
                 System.out.println(", Mean per client: " + computeMean() + "m/s, STD per client: " + computeSTD() + "m/s");
                 reset();
             }
         }, 20 * 1000, 20 * 1000);
+    }
+
+    public void stop() {
+        statsTimer.cancel();
     }
 
 
