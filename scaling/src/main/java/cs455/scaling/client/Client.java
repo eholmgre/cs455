@@ -140,8 +140,8 @@ public class Client {
                 return;
             }
 
-            stats.start();
             senderThread.start();
+            stats.start();
 
 
             while (true) {

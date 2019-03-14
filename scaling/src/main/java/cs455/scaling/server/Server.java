@@ -199,8 +199,8 @@ public class Server {
             selector = Selector.open();
 
             serverSocket = ServerSocketChannel.open();
-            serverSocket.bind(new InetSocketAddress("localhost", portNum));
             serverSocket.configureBlocking(false);
+            serverSocket.bind(new InetSocketAddress(portNum));
             serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
         } catch (IOException e) {

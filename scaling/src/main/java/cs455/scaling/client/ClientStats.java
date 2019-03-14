@@ -49,7 +49,9 @@ public class ClientStats {
     }
 
     public void stop() {
-        statsTimer.cancel();
+        if (statsTimer != null) {
+            statsTimer.cancel();
+        }
     }
 
 
