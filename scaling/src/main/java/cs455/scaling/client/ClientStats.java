@@ -9,6 +9,7 @@ public class ClientStats {
 
     private long numSent = 0;
     private long numRcvd = 0;
+    private long numIncorect = 0;
 
     private Timer statsTimer;
 
@@ -20,6 +21,10 @@ public class ClientStats {
         ++numRcvd;
     }
 
+    public synchronized void incIncorect() {
+        ++numIncorect;
+    }
+
     private synchronized long getNumSent() {
         return numSent;
     }
@@ -28,9 +33,14 @@ public class ClientStats {
         return numRcvd;
     }
 
+    private synchronized long getNumIncorect() {
+        return numIncorect;
+    }
+
     private synchronized void reset() {
         numRcvd = 0;
         numSent = 0;
+        numIncorect = 0;
     }
 
     public void start() {
@@ -41,7 +51,7 @@ public class ClientStats {
             public void run() {
                 System.out.print("[" + new SimpleDateFormat("HH:mm:ss").format(new Date()) + "] ");
                 System.out.println( getNumSent() + " messages sent, "
-                + getNumRcvd() + " received in last 20 seconds");
+                + getNumRcvd() + " received in last 20 seconds (" + getNumIncorect() + " messages not found in hash list)");
 
                 reset();
             }
