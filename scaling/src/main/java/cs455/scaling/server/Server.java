@@ -1,7 +1,6 @@
 package cs455.scaling.server;
 
 import cs455.scaling.util.Hasher;
-// import cs455.scaling.util.MessageMaker;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -10,7 +9,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.Set;
@@ -22,34 +20,11 @@ public class Server {
 
     private Selector selector;
 
-    private class KeyData {
-        private boolean accepted;
-        private boolean read;
-
-        public KeyData(boolean accepted, boolean read) {
-            this.accepted = accepted;
-            this.read = read;
-        }
-
-        public boolean isAccepted() {
-            return accepted;
-        }
-
-        public boolean isRead() {
-            return read;
-        }
-
-        public void accept() {
-            accepted = true;
-        }
-
-        public void read() {
-            read = true;
-        }
-    }
+    private ServerStats stats;
 
     public Server(String []args) {
         pargs = args;
+        stats = new ServerStats();
     }
 
     public void printUsage() {
@@ -59,29 +34,29 @@ public class Server {
     private void handleAcceptation(SelectionKey key) {
         pool.add(() -> {
             try {
-                if (key.attachment() == null) {
-                    key.attach(new KeyData(false, false));
-                } else {
-                    if (((KeyData)key.attachment()).isAccepted()) {
-                        return;
-                    }
-                }
 
                 ServerSocketChannel server = (ServerSocketChannel) key.channel();
                 SocketChannel client = server.accept();
+
                 if (client == null) {
-                    System.out.println("client null what the hell");
+                    System.out.println("is client null");
                     return;
                 }
+
+                if (! stats.isRegistered(client)) {
+                    System.out.println("client already registered");
+                    return;
+                }
+
                 client.configureBlocking(false);
+
+                stats.register(client);
+
                 client.register(selector, SelectionKey.OP_READ);
                 System.out.println("Client registered");
 
-                ((KeyData) key.attachment()).accept();
             } catch (IOException e) {
                 System.out.println("Error accepting connection: " + e.getMessage());
-            } catch (NullPointerException e) {
-                System.out.println("why is this happening");
             }
         });
     }
@@ -89,14 +64,6 @@ public class Server {
     private void handleMessage(SelectionKey k) {
         pool.add(() -> {
             try {
-
-                if (k.attachment() == null) {
-                    k.attach(new KeyData(false, false));
-                } else {
-                    if (((KeyData)k.attachment()).isRead()) {
-                        return;
-                    }
-                }
 
                 ByteBuffer buffer = ByteBuffer.allocate(8 * 1024);
                 SocketChannel client = (SocketChannel) k.channel();
@@ -110,6 +77,10 @@ public class Server {
                 buffer.flip();
 
                 if (bytesRead == -1) {
+
+                    stats.deRegister(client);
+
+                    // can you close something while syncing on it?
                     client.close();
                     System.out.println("Client unregistered");
                 } else {
@@ -130,6 +101,8 @@ public class Server {
 
                     System.out.println("received message with hash [" + hash + "]");
 
+                    stats.incRcvd(client);
+
                     // lambda classes on lambda classes - basically functional programming
                     pool.add(() -> {
                         synchronized (k) { // is this necessary?
@@ -145,16 +118,20 @@ public class Server {
                                 synchronized (client) {
                                     client.write(sendBuf);
                                 }
+
                             } catch (IOException e) {
                                 System.out.println("IOException when sending reply: " + e.getMessage());
                             }
+
+                            stats.incSent(client);
 
                             k.interestOps(SelectionKey.OP_READ);
                             selector.wakeup(); // dont think this be necessary w/ select timeout
                         }
                     });
 
-                    ((KeyData)k.attachment()).read();
+                    selector.wakeup(); // just for good measure
+
 
                 }
 
@@ -216,6 +193,8 @@ public class Server {
 
         ServerSocketChannel serverSocket;
 
+        stats.start();
+
         try {
             selector = Selector.open();
 
@@ -237,7 +216,7 @@ public class Server {
 
         while (true) {
             try {
-                int selected = selector.select(100);
+                int selected = selector.select();
 
                 if (selected == 0) {
                     continue;
