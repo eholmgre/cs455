@@ -140,6 +140,8 @@ public class Client {
                 return;
             }
 
+            System.out.println("Connected to server");
+
             senderThread.start();
             stats.start();
 

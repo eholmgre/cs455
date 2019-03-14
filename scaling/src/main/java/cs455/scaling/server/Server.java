@@ -41,12 +41,12 @@ public class Server {
                 SocketChannel client = server.accept();
 
                 if (client == null) {
-                    System.out.println("client is null");
+                    //System.out.println("client is null");
                     return;
                 }
 
                 if (stats.isRegistered(client)) {
-                    System.out.println("client already registered");
+                    //System.out.println("client already registered");
                     return;
                 }
 
