@@ -74,7 +74,6 @@ public class Client {
 
         Selector selector;
 
-        stats.start();
 
         final double rate = messageRate;
 
@@ -93,7 +92,9 @@ public class Client {
                         hashes.add(hash);
                     }
 
-                    server.write(buffer);
+                    synchronized (server) {
+                        server.write(buffer);
+                    }
                     buffer.clear();
 
                     stats.incSent();
@@ -117,7 +118,29 @@ public class Client {
             server = SocketChannel.open(serverAddr);
             server.configureBlocking(false);
             server.register(selector, SelectionKey.OP_READ);
-            System.out.println("server connected: " + server.isConnected());
+//            server.connect(serverAddr);
+//            System.out.println("server connected: " + server.isConnected());
+            boolean connected = false;
+            for (int i = 0; i < 30; ++i) {
+                if (server.isConnected()) {
+                    connected = true;
+                    break;
+                }
+
+                System.out.print('.');
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    System.out.println(e.getStackTrace());
+                }
+            }
+
+            if (! connected) {
+                System.out.println("Couldn't connect to server in 30 seconds.");
+                return;
+            }
+
+            stats.start();
             senderThread.start();
 
 
