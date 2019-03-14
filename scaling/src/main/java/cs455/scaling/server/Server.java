@@ -203,6 +203,8 @@ public class Server {
             return;
         }
 
+        System.out.println("Starting server with " + numThreads + " threads.");
+
         ServerSocketChannel serverSocket;
 
         stats.start();
