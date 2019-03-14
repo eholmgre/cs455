@@ -132,11 +132,11 @@ public class Server {
                                 stats.incSent(client);
 
                                 //k.interestOps(SelectionKey.OP_READ);
-                                //selector.wakeup(); // dont think this be necessary w/ select timeout
+                                selector.wakeup(); // dont think this be necessary w/ select timeout
                             }
                         });
 
-                        //selector.wakeup(); // just for good measure
+                        selector.wakeup(); // just for good measure
 
 
                     }
@@ -224,7 +224,9 @@ public class Server {
         debugTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                System.out.println("pending tasks: " + pool.numberPendingTasks() + "\tworking threads: " + pool.workingThreads());
+                if (pool.numberPendingTasks() != 0) {
+                    System.out.println("pending tasks: " + pool.numberPendingTasks() + "\tworking threads: " + pool.workingThreads());
+                }
             }
         }, 0, 250);
 

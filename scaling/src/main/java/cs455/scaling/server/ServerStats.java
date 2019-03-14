@@ -148,8 +148,8 @@ public class ServerStats {
             @Override
             public void run() {
                 System.out.print("[" + new SimpleDateFormat("HH:mm:ss").format(new Date()));
-                System.out.print("] Server Throughput: " + totalSent / 20.0 + "m/s, Active Clients: " + accepted.size());
-                System.out.println(", Mean per client: " + computeMean() + "m/s, STD per client: " + computeSTD() + "m/s");
+                System.out.printf("] Server Throughput: %.4fm/s, Active Clients: %d", totalSent / 20.0, accepted.size());
+                System.out.printf(", Mean per client: %.4fm/s, STD per client: %.4fm/s", computeMean(), computeSTD());
                 reset();
             }
         }, 20 * 1000, 20 * 1000);
