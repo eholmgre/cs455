@@ -12,6 +12,10 @@ dependencies {
   compile group: 'org.apache.hadoop', name: 'hadoop-common', version: '3.1.2'
 }
 
+dependencies {
+    compile group: 'org.apache.commons', name: 'commons-csv', version: '1.6'
+}
+
 jar {
   from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
 }
