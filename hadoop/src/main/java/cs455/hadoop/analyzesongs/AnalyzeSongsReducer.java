@@ -106,9 +106,9 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                             Q2ArtistMap.put(parts[1], parts[2]);
                         }
                     } catch (NumberFormatException e) {
-                        context.write(new Text("Q2 NF Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
+                        //context.write(new Text("Q2 NF Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        context.write(new Text("Q2 AIOOB Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
+                        //context.write(new Text("Q2 AIOOB Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
                     }
                 }
                 for (String song_id : Q2LoudnessMap.keySet()) {
@@ -125,17 +125,17 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
 
                 for (String artist : Q2AverageLoudnessMap.keySet()) {
                     ArrayList<Float> loudnesses = Q2AverageLoudnessMap.get(artist);
-                    context.write(new Text(artist + " loudness list size: " + loudnesses.size()), new Text(Arrays.toString(loudnesses.toArray())));
+                    //context.write(new Text(artist + " loudness list size: " + loudnesses.size()), new Text(Arrays.toString(loudnesses.toArray())));
                     float sum = 0;
                     for (float f : loudnesses) {
                         sum += f;
                     }
                     sum = sum / (float)loudnesses.size();
-                    context.write(new Text(artist + " loudness avg: " + sum), new Text("curernt max: " + loudestArtist + " (" + maxLoudness + ")"));
+                    //context.write(new Text(artist + " loudness avg: " + sum), new Text("curernt max: " + loudestArtist + " (" + maxLoudness + ")"));
                     if (sum > maxLoudness) {
                         loudestArtist = artist;
                         maxLoudness = sum;
-                        context.write(new Text("new max"), new Text("yee"));
+                        //context.write(new Text("new max"), new Text("yee"));
                     }
                 }
 
@@ -158,9 +158,9 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                             Q3SongNameMap.put(parts[1], parts[2]);
                         }
                     } catch (NumberFormatException e) {
-                        context.write(new Text("Q3 NF Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
+                        //context.write(new Text("Q3 NF Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        context.write(new Text("Q3 AIOOB Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
+                        //context.write(new Text("Q3 AIOOB Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
                     }
                 }
                 String hotttestttArtisttt = "";
@@ -169,16 +169,16 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
 
                 for (String song_id : Q3HotttnesssMap.keySet()) {
                     try {
-                        context.write(new Text(Q3ArtistMap.get(song_id + " - " + Q3SongNameMap.get(song_id))), new Text("" + Q3HotttnesssMap.get(song_id)));
-                        context.write(new Text("current hottest: " + hotttestttArtisttt + " - " + hottestttSong), new Text("" + maxHotttness));
+                        //context.write(new Text(Q3ArtistMap.get(song_id + " - " + Q3SongNameMap.get(song_id))), new Text("" + Q3HotttnesssMap.get(song_id)));
+                        //context.write(new Text("current hottest: " + hotttestttArtisttt + " - " + hottestttSong), new Text("" + maxHotttness));
                         float hottness = Q3HotttnesssMap.get(song_id);
                         if (hottness > maxHotttness) {
                             hottestttSong = Q3SongNameMap.get(song_id);
                             hotttestttArtisttt = Q3ArtistMap.get(song_id);
-                            context.write(new Text("new max hottness"), new Text("yee"));
+                            //context.write(new Text("new max hottness"), new Text("yee"));
                         }
                     } catch (NullPointerException e) {
-                        context.write(new Text("Q3 NPE for song id " + song_id), new Text(e.getMessage()));
+                        //context.write(new Text("Q3 NPE for song id " + song_id), new Text(e.getMessage()));
                     }
                 }
 
@@ -201,11 +201,11 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                             Q4ArtistMap.put(parts[1], parts[2]);
                         }
                     } catch (NumberFormatException e) {
-                        context.write(new Text("Q4 NF Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                        //context.write(new Text("Q4 NF Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        context.write(new Text("Q4 AIOOB Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                        //context.write(new Text("Q4 AIOOB Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
                     } catch (NullPointerException e) {
-                        context.write(new Text("Q4 NP Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                        //context.write(new Text("Q4 NP Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
                     }
                 }
 
@@ -298,11 +298,11 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                             Q6ArtistMap.put(parts[1], parts[3]);
                         }
                     } catch (NumberFormatException e) {
-                        context.write(new Text("Q6 NF Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                        //context.write(new Text("Q6 NF Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        context.write(new Text("Q6 AIOOB Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                        //context.write(new Text("Q6 AIOOB Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
                     } catch (NullPointerException e) {
-                        context.write(new Text("Q6 NP Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                        //context.write(new Text("Q6 NP Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
                     }
                 }
 

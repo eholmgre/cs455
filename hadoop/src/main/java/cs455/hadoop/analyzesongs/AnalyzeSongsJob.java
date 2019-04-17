@@ -25,7 +25,7 @@ public class AnalyzeSongsJob {
         try {
             Configuration conf = new Configuration();
             // Give the MapRed job a name. You'll see this name in the Yarn webapp.
-            Job job = Job.getInstance(conf, "its my job i do *what i wanna");
+            Job job = Job.getInstance(conf, "curse you missing blocks");
             // Current class.
             job.setJarByClass(AnalyzeSongsJob.class);
             // Mapper
@@ -34,7 +34,7 @@ public class AnalyzeSongsJob {
             //job.setCombinerClass(AnalyzeSongsReducer.class);
             // Reducer
             job.setReducerClass(AnalyzeSongsReducer.class);
-            job.setNumReduceTasks(1);
+            job.setNumReduceTasks(3);
             // Outputs from the Mapper.
             job.setMapOutputKeyClass(Text.class);
             job.setMapOutputValueClass(Text.class);
@@ -45,8 +45,8 @@ public class AnalyzeSongsJob {
             job.setOutputValueClass(Text.class);
             // path to input in HDFS
             if (remote) {
-                MultipleInputs.addInputPath(job, new Path("/home/data/analysis-reduced"), TextInputFormat.class, MapAnalysis.class);
-                MultipleInputs.addInputPath(job, new Path("/home/data/metadata"), TextInputFormat.class, MapMetadata.class);
+                MultipleInputs.addInputPath(job, new Path("/data/analysis"), TextInputFormat.class, MapAnalysis.class);
+                MultipleInputs.addInputPath(job, new Path("/data/metadata"), TextInputFormat.class, MapMetadata.class);
 
             } else {
                 MultipleInputs.addInputPath(job, new Path("/data/analysis"), TextInputFormat.class, MapAnalysis.class);

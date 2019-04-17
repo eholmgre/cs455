@@ -20,21 +20,21 @@ public class MapAnalysis extends Mapper<Object, Text, Text, Text> {
         final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT.withRecordSeparator('\n').withHeader());
         for (final CSVRecord record : parser) {
 
-            if (record.get("song_id").equals("song_id")) {
-                continue;
-            }
+//            if (record.get("song_id").equals("song_id")) {
+//                continue;
+//            }
 
-            if (!record.get("loudness").equals("")) {
-                context.write(new Text("Q2"), new Text("a\t" + record.get("song_id") + "\t" + record.get("loudness")));
-            }
+//            if (!record.get("loudness").equals("")) {
+//                context.write(new Text("Q2"), new Text("a\t" + record.get("song_id") + "\t" + record.get("loudness")));
+//            }
 
             if (!record.get("song_hotttnesss").equals("")) {
                 context.write(new Text("Q3"), new Text("a\t" + record.get("song_id") + "\t" + record.get("song_hotttnesss")));
             }
 
-            if (!record.get("end_of_fade_in").equals("") && !record.get("duration").equals("") && !record.get("start_of_fade_out").equals("")) {
-                context.write(new Text("Q4"), new Text("a\t" + record.get("song_id") + "\t" + record.get("end_of_fade_in") + "\t" + record.get("duration") + "\t" + record.get("start_of_fade_out")));
-            }
+//            if (!record.get("end_of_fade_in").equals("") && !record.get("duration").equals("") && !record.get("start_of_fade_out").equals("")) {
+//                context.write(new Text("Q4"), new Text("a\t" + record.get("song_id") + "\t" + record.get("end_of_fade_in") + "\t" + record.get("duration") + "\t" + record.get("start_of_fade_out")));
+//            }
 
             if (!record.get("duration").equals("")) {
                 context.write(new Text("Q5"), new Text("a\t" + record.get("song_id") + "\t" + record.get("duration")));
