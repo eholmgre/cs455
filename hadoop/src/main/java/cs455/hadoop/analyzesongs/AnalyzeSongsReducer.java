@@ -150,12 +150,16 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                     try {
                         String parts[] = val.toString().split("\t");
                         if (parts[0].equals("a")) {
-                            Q3HotttnesssMap.put(parts[1], Float.parseFloat(parts[2]));
+                            float hottness = Float.parseFloat(parts[2]);
+                            if (hottness < 0) {
+                                context.write(new Text("hottness wrong: "), new Text(val.toString()));
+                            }
+                            Q3HotttnesssMap.put(parts[1], hottness);
                         } else if (parts[0].equals("m")) {
-                            //              song-id     artist-name
-                            Q3ArtistMap.put(parts[1], parts[3]);
                             //              song-id     title
                             Q3SongNameMap.put(parts[1], parts[2]);
+                            //              song-id     artist-name
+                            Q3ArtistMap.put(parts[1], parts[3]);
                         }
                     } catch (NumberFormatException e) {
                         //context.write(new Text("Q3 NF Exception:"), new Text(e.getMessage() + ", val: [" + val.toString() + "]"));
@@ -165,7 +169,7 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                 }
                 String hotttestttArtisttt = "";
                 String hottestttSong = "";
-                float maxHotttness = -1 * Float.MAX_VALUE;
+                float maxHotttness = 0;
 
                 for (String song_id : Q3HotttnesssMap.keySet()) {
                     try {
@@ -175,6 +179,7 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                         if (hottness > maxHotttness) {
                             hottestttSong = Q3SongNameMap.get(song_id);
                             hotttestttArtisttt = Q3ArtistMap.get(song_id);
+                            maxHotttness = hottness;
                             //context.write(new Text("new max hottness"), new Text("yee"));
                         }
                     } catch (NullPointerException e) {
@@ -252,7 +257,7 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                 }
 
                 for (String song_id : Q5SongMap.keySet()) {
-                    Q5LengthList.add(new Pair<>(Q5ArtistMap.get(song_id) + " - " + Q5SongMap.get(song_id), Q5LengthMap.get(song_id)));
+                    Q5LengthList.add(new Pair<>(song_id, Q5LengthMap.get(song_id)));
                 }
 
                 //Comparator.comparing(Pair::getSecond);
@@ -262,24 +267,30 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                 ArrayList<Pair<String, Float>> medians = new ArrayList<>();
 
                 int m = Q5LengthList.size() / 2;
-                int lower = m, upper = m;
+                context.write(new Text("medians length " + Q5LengthList.size()), new Text("median index " + m + " value " + Q5LengthList.get(m)));
+                int lower = m;
+                int upper = m;
 
                 while (Q5LengthList.get(lower).getSecond().equals(Q5LengthList.get(m).getSecond())) {
                     medians.add(Q5LengthList.get(lower));
+                    --lower;
                 }
 
                 while (Q5LengthList.get(upper).getSecond().equals(Q5LengthList.get(m).getSecond())) {
                     medians.add(Q5LengthList.get(upper));
+                    ++upper;
                 }
+
+                context.write(new Text("num songs w/ med length"), new Text("" + medians.size()));
 
                 StringBuilder meds = new StringBuilder();
 
                 for (Pair<String, Float> p : medians) {
-                    meds.append(p.getFirst() + " (" + p.getSecond() + "), ");
+                    meds.append(Q5ArtistMap.get(p.getFirst()) + " - " + Q5SongMap.get(p.getFirst()) + " (" + p.getSecond() + "), ");
             }
-                context.write(new Text("Shortest Song"), new Text(Q5LengthList.get(0).getFirst() + " (" + Q5LengthList.get(0).getSecond() + ")"));
+                context.write(new Text("Shortest Song"), new Text(Q5ArtistMap.get(Q5LengthList.get(0).getFirst()) + " - " + Q5SongMap.get(Q5LengthList.get(0).getFirst()) + " (" + Q5LengthList.get(0).getSecond() + ")"));
 
-                context.write(new Text("Longest Song"), new Text(Q5LengthList.get(Q5LengthList.size() - 1).getFirst() + " (" + Q5LengthList.get(Q5LengthList.size() - 1).getSecond() + ")"));
+                context.write(new Text("Longest Song"), new Text(Q5ArtistMap.get(Q5LengthList.get(Q5LengthList.size() - 1).getFirst()) + " - " + Q5SongMap.get(Q5LengthList.get(Q5LengthList.size() - 1).getFirst()) + " (" + Q5LengthList.get(Q5LengthList.size() - 1).getSecond() + ")"));
 
                 context.write(new Text("Median Length Songs"), new Text(meds.toString()));
                 break;
@@ -312,7 +323,6 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
 
                 for (String song_id : Q6EnergyMap.keySet()) {
                     float energy = Q6EnergyMap.get(song_id);
-                    float danceablility = Q6DanceabilityMap.get(song_id);
 
                     if (energy > minMaxEnergy || Q6EnergyList.size() < 10) {
                         Q6EnergyList.add(new Pair<>(song_id, energy));
@@ -320,14 +330,20 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                         while (Q6EnergyList.size() > 10) {
                             Q6EnergyList.remove(0);
                         }
+                        minMaxEnergy = Q6EnergyList.get(0).getSecond();
                     }
+                }
+
+                for (String song_id : Q6DanceabilityMap.keySet()) {
+                    float danceablility = Q6DanceabilityMap.get(song_id);
 
                     if (danceablility > minMaxDanceability || Q6DanceabilityList.size() < 10) {
-                        Q6DanceabilityList.add(new Pair<>(song_id, energy));
+                        Q6DanceabilityList.add(new Pair<>(song_id, danceablility));
                         Collections.sort(Q6DanceabilityList, (Pair<String, Float> x, Pair<String, Float> y) -> x.getSecond().compareTo(y.getSecond()));
                         while (Q6DanceabilityList.size() > 10) {
                             Q6DanceabilityList.remove(0);
                         }
+                        minMaxDanceability = Q6DanceabilityList.get(0).getSecond();
                     }
 
                 }

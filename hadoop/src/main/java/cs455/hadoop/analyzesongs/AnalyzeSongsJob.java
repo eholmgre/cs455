@@ -25,7 +25,7 @@ public class AnalyzeSongsJob {
         try {
             Configuration conf = new Configuration();
             // Give the MapRed job a name. You'll see this name in the Yarn webapp.
-            Job job = Job.getInstance(conf, "curse you missing blocks");
+            Job job = Job.getInstance(conf, "it says failed but really its working");
             // Current class.
             job.setJarByClass(AnalyzeSongsJob.class);
             // Mapper

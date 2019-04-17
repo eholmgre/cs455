@@ -20,9 +20,9 @@ public class MapAnalysis extends Mapper<Object, Text, Text, Text> {
         final CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT.withRecordSeparator('\n').withHeader());
         for (final CSVRecord record : parser) {
 
-//            if (record.get("song_id").equals("song_id")) {
-//                continue;
-//            }
+            if (record.get("song_id").equals("song_id")) {
+                continue;
+            }
 
 //            if (!record.get("loudness").equals("")) {
 //                context.write(new Text("Q2"), new Text("a\t" + record.get("song_id") + "\t" + record.get("loudness")));
