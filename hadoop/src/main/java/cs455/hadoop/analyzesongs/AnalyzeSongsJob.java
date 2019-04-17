@@ -24,7 +24,7 @@ public class AnalyzeSongsJob {
         try {
             Configuration conf = new Configuration();
             // Give the MapRed job a name. You'll see this name in the Yarn webapp.
-            Job job = Job.getInstance(conf, "Analyze Songs");
+            Job job = Job.getInstance(conf, "im fine ok");
             // Current class.
             job.setJarByClass(AnalyzeSongsJob.class);
             // Mapper
@@ -33,6 +33,7 @@ public class AnalyzeSongsJob {
             //job.setCombinerClass(AnalyzeSongsReducer.class);
             // Reducer
             job.setReducerClass(AnalyzeSongsReducer.class);
+            job.setNumReduceTasks(1);
             // Outputs from the Mapper.
             job.setMapOutputKeyClass(Text.class);
             job.setMapOutputValueClass(Text.class);
@@ -57,7 +58,7 @@ public class AnalyzeSongsJob {
             if (remote) {
                 FileOutputFormat.setOutputPath(job, new Path("/home/output" + now.getTime()));
             } else {
-                FileOutputFormat.setOutputPath(job, new Path("/output" + now.getTime()));
+                FileOutputFormat.setOutputPath(job, new Path("/output"));
             }
             // Block until the job is completed.
             System.exit(job.waitForCompletion(true) ? 0 : 1);
