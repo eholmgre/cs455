@@ -5,19 +5,20 @@ repositories {
 }
 
 dependencies {
-  compile group: 'org.apache.hadoop', name: 'hadoop-mapreduce-client-core', version: '3.1.2'
-}
+    compile group: 'org.apache.hadoop', name: 'hadoop-mapreduce-client-core', version: '3.1.2'
+    runtime group: 'org.apache.hadoop', name: 'hadoop-mapreduce-client-core', version: '3.1.2'
 
-dependencies {
-  compile group: 'org.apache.hadoop', name: 'hadoop-common', version: '3.1.2'
-}
+    compile group: 'org.apache.hadoop', name: 'hadoop-common', version: '3.1.2'
+    runtime group: 'org.apache.hadoop', name: 'hadoop-common', version: '3.1.2'
 
-dependencies {
     compile group: 'org.apache.commons', name: 'commons-csv', version: '1.6'
+    runtime group: 'org.apache.commons', name: 'commons-csv', version: '1.6'
+
+    testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
 jar {
-  from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
 }
 
 ext.hadoopVersion = "3.1.2"
@@ -32,6 +33,8 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
-}
+//compile group: 'org.apache.hadoop', name: 'hadoop-common', version: '3.1.2'
+// https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-auth
+//compile group: 'org.apache.hadoop', name: 'hadoop-auth', version: '3.1.2'
+// https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-hdfs
+//compile group: 'org.apache.hadoop', name: 'hadoop-hdfs', version: '3.1.2'

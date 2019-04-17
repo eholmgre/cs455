@@ -27,11 +27,13 @@ public class MapMetadata extends Mapper<Object, Text, Text, Text> {
 
             context.write(new Text("Q2"), new Text("m\t" + record.get("song_id") + "\t" + record.get("artist_name")));
 
-            context.write(new Text("Q3"), new Text("m\t" +record.get("song_id") + "\t" + record.get("title") + "\t" + record.get("artist_name")));
+            context.write(new Text("Q3"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title") + "\t" + record.get("artist_name")));
 
             context.write(new Text("Q4"), new Text("m\t" + record.get("song_id") + "\t" + record.get("artist_name")));
 
-            context.write(new Text("Q5"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title")));
+            context.write(new Text("Q5"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title") + "\t" + record.get("artist_name")));
+
+            context.write(new Text("Q6"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title") + "\t" + record.get("artist_name")));
 
             /*
             for (String s : "Q1 Q2 Q3 Q4 Q5 Q6".split(" ")) {

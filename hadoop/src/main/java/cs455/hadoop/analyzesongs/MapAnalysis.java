@@ -40,6 +40,9 @@ public class MapAnalysis extends Mapper<Object, Text, Text, Text> {
                 context.write(new Text("Q5"), new Text("a\t" + record.get("song_id") + "\t" + record.get("duration")));
             }
 
+            if (!record.get("energy").equals("") && !record.get("danceability").equals("")) {
+                context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\t" + record.get("energy") + "\t" + record.get("danceability")));
+            }
             /*
             for (String s : "Q2 Q3 Q4 Q5 Q6".split(" ")) {
                 context.write(new Text(s), new Text("analysis\t" + record.get(1) + "\t" + record.get(2) + "\t" +record.get(4)+ "\t" +

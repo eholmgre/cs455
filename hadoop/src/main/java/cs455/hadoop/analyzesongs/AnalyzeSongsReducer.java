@@ -27,8 +27,16 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
     private HashMap<String, Float> Q4TotalFadeTimeMap;
 
     private HashMap<String, Float> Q5LengthMap;
-    private HashMap<String,String> Q5SongMap;
+    private HashMap<String, String> Q5SongMap;
+    private HashMap<String, String> Q5ArtistMap;
     private ArrayList<Pair<String, Float>> Q5LengthList;
+
+    private HashMap<String, Float> Q6EnergyMap;
+    private HashMap<String, Float> Q6DanceabilityMap;
+    private HashMap<String, String> Q6SongNameMap;
+    private HashMap<String, String> Q6ArtistMap;
+    private ArrayList<Pair<String, Float>> Q6EnergyList;
+    private ArrayList<Pair<String, Float>> Q6DanceabilityList;
 
     @Override
     protected void setup(Context context) {
@@ -45,7 +53,14 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
         Q4TotalFadeTimeMap = new HashMap<>();
         Q5LengthMap = new HashMap<>();
         Q5SongMap = new HashMap<>();
+        Q5ArtistMap = new HashMap<>();
         Q5LengthList = new ArrayList<>();
+        Q6EnergyMap = new HashMap<>();
+        Q6DanceabilityMap = new HashMap<>();
+        Q6SongNameMap = new HashMap<>();
+        Q6ArtistMap = new HashMap<>();
+        Q6EnergyList = new ArrayList<>();
+        Q6DanceabilityList = new ArrayList<>();
     }
 
     @Override
@@ -221,7 +236,7 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
 
             case "Q5":
                 // context.write(new Text("Q5"), new Text("a\t" + record.get("song_id") + "\t" + record.get("duration")));
-                // context.write(new Text("Q5"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title")));
+                // context.write(new Text("Q5"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title") + artist name));
                 for (Text val : values) {
                     try {
                         String []parts = val.toString().split("\t");
@@ -229,6 +244,7 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                             Q5LengthMap.put(parts[1], Float.parseFloat(parts[2]));
                         } else if (parts[0].equals("m")) {
                             Q5SongMap.put(parts[1], parts[2]);
+                            Q5ArtistMap.put(parts[1], parts[3]);
                         }
                     } catch (NumberFormatException e) {
                         // do som[h
@@ -236,7 +252,7 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                 }
 
                 for (String song_id : Q5SongMap.keySet()) {
-                    Q5LengthList.add(new Pair<>(Q5SongMap.get(song_id), Q5LengthMap.get(song_id)));
+                    Q5LengthList.add(new Pair<>(Q5ArtistMap.get(song_id) + " - " + Q5SongMap.get(song_id), Q5LengthMap.get(song_id)));
                 }
 
                 //Comparator.comparing(Pair::getSecond);
@@ -261,15 +277,74 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                 for (Pair<String, Float> p : medians) {
                     meds.append(p.getFirst() + " (" + p.getSecond() + "), ");
             }
-
-
                 context.write(new Text("Shortest Song"), new Text(Q5LengthList.get(0).getFirst() + " (" + Q5LengthList.get(0).getSecond() + ")"));
 
                 context.write(new Text("Longest Song"), new Text(Q5LengthList.get(Q5LengthList.size() - 1).getFirst() + " (" + Q5LengthList.get(Q5LengthList.size() - 1).getSecond() + ")"));
 
                 context.write(new Text("Median Length Songs"), new Text(meds.toString()));
+                break;
+
+            case "Q6":
+                // context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\t" + record.get("energy") + "\t" + record.get("danceability")));
+                // context.write(new Text("Q6"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title") + "\t" + record.get("artist_name")));
+                for (Text val : values) {
+                    try {
+                        String []parts = val.toString().split("\t");
+                        if (parts[0].equals("a")) {
+                            Q6EnergyMap.put(parts[1], Float.parseFloat(parts[2]));
+                            Q6DanceabilityMap.put(parts[1], Float.parseFloat(parts[3]));
+                        } else if (parts[0].equals("m")) {
+                            Q6SongNameMap.put(parts[1], parts[2]);
+                            Q6ArtistMap.put(parts[1], parts[3]);
+                        }
+                    } catch (NumberFormatException e) {
+                        context.write(new Text("Q6 NF Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        context.write(new Text("Q6 AIOOB Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                    } catch (NullPointerException e) {
+                        context.write(new Text("Q6 NP Exception"), new Text(e.getMessage() + " val [" + val.toString() + "]"));
+                    }
+                }
+
+                float minMaxEnergy = 0;
+                float minMaxDanceability = 0;
 
 
+                for (String song_id : Q6EnergyMap.keySet()) {
+                    float energy = Q6EnergyMap.get(song_id);
+                    float danceablility = Q6DanceabilityMap.get(song_id);
+
+                    if (energy > minMaxEnergy || Q6EnergyList.size() < 10) {
+                        Q6EnergyList.add(new Pair<>(song_id, energy));
+                        Collections.sort(Q6EnergyList, (Pair<String, Float> x, Pair<String, Float> y) -> x.getSecond().compareTo(y.getSecond()));
+                        while (Q6EnergyList.size() > 10) {
+                            Q6EnergyList.remove(0);
+                        }
+                    }
+
+                    if (danceablility > minMaxDanceability || Q6DanceabilityList.size() < 10) {
+                        Q6DanceabilityList.add(new Pair<>(song_id, energy));
+                        Collections.sort(Q6DanceabilityList, (Pair<String, Float> x, Pair<String, Float> y) -> x.getSecond().compareTo(y.getSecond()));
+                        while (Q6DanceabilityList.size() > 10) {
+                            Q6DanceabilityList.remove(0);
+                        }
+                    }
+
+                }
+                StringBuilder energyBuilder = new StringBuilder();
+                for (Pair<String, Float> energy : Q6EnergyList) {
+                    energyBuilder.append(Q6ArtistMap.get(energy.getFirst() + " - " + Q6SongNameMap.get(energy.getFirst()
+                            + " (" + energy.getSecond() + "), ")));
+                }
+
+                StringBuilder danceBuilder = new StringBuilder();
+                for (Pair<String, Float> dance : Q6DanceabilityList) {
+                    energyBuilder.append(Q6ArtistMap.get(dance.getFirst() + " - " + Q6SongNameMap.get(dance.getFirst()
+                            + " (" + dance.getSecond() + "), ")));
+                }
+
+                context.write(new Text("Top 10 songs w/ max energy"), new Text(energyBuilder.toString()));
+                context.write(new Text("Top 10 songs w/ max danceability"), new Text(danceBuilder.toString()));
         }
     }
 

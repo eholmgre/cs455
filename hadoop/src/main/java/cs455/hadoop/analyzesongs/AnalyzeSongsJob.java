@@ -18,13 +18,14 @@ import java.util.Date;
 
 public class AnalyzeSongsJob {
 
-    private static final boolean remote = true;
+     private static final boolean remote = true;
+    //private static final boolean remote = false;
 
     public static void main(String[] args) {
         try {
             Configuration conf = new Configuration();
             // Give the MapRed job a name. You'll see this name in the Yarn webapp.
-            Job job = Job.getInstance(conf, "im fine ok");
+            Job job = Job.getInstance(conf, "its my job i do *what i wanna");
             // Current class.
             job.setJarByClass(AnalyzeSongsJob.class);
             // Mapper
@@ -58,7 +59,7 @@ public class AnalyzeSongsJob {
             if (remote) {
                 FileOutputFormat.setOutputPath(job, new Path("/home/output" + now.getTime()));
             } else {
-                FileOutputFormat.setOutputPath(job, new Path("/output"));
+                FileOutputFormat.setOutputPath(job, new Path("/output" + now.getTime()));
             }
             // Block until the job is completed.
             System.exit(job.waitForCompletion(true) ? 0 : 1);
