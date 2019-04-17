@@ -38,6 +38,8 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
     private ArrayList<Pair<String, Float>> Q6EnergyList;
     private ArrayList<Pair<String, Float>> Q6DanceabilityList;
 
+    private HashMap<String, String[]> Q8SimilarArtistsMap;
+
     @Override
     protected void setup(Context context) {
         //todo: find a good init value for these maps
@@ -61,6 +63,7 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
         Q6ArtistMap = new HashMap<>();
         Q6EnergyList = new ArrayList<>();
         Q6DanceabilityList = new ArrayList<>();
+        Q8SimilarArtistsMap = new HashMap<>();
     }
 
     @Override
@@ -361,6 +364,35 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
 
                 context.write(new Text("Top 10 songs w/ max energy"), new Text(energyBuilder.toString()));
                 context.write(new Text("Top 10 songs w/ max danceability"), new Text(danceBuilder.toString()));
+                break;
+
+            case "Q8":
+                //context.write(new Text("Q8"), new Text("m\t" + record.get("artist_name") + "\t" + record.get("similar_artists")));
+                String mostUniqueArtist = "";
+                int mostUniqueSimilar = -1;
+
+                String leastUniqueArtist = "";
+                int leastUniqueSimilar = Integer.MAX_VALUE;
+                for (Text val : values) {
+                    String []parts = val.toString().split("\t");
+                    if (!Q8SimilarArtistsMap.keySet().contains(parts[1])) {
+                        String []similar = parts[2].split(" ");
+                        Q8SimilarArtistsMap.put(parts[1], parts[2].split(" "));
+
+                        if (similar.length > leastUniqueSimilar) {
+                            leastUniqueArtist = parts[1];
+                            leastUniqueSimilar = similar.length;
+                        }
+
+                        if (similar.length < mostUniqueSimilar) {
+                            mostUniqueArtist = parts[1];
+                            mostUniqueSimilar = similar.length;
+                        }
+                    }
+                }
+
+                context.write(new Text("least unique artist"), new Text(leastUniqueArtist + " (" + leastUniqueSimilar + ")"));
+                context.write(new Text("most unique artist"), new Text(mostUniqueArtist + " (" + mostUniqueSimilar + ")"));
         }
     }
 

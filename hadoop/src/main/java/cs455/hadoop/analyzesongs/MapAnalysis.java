@@ -24,17 +24,17 @@ public class MapAnalysis extends Mapper<Object, Text, Text, Text> {
                 continue;
             }
 
-//            if (!record.get("loudness").equals("")) {
-//                context.write(new Text("Q2"), new Text("a\t" + record.get("song_id") + "\t" + record.get("loudness")));
-//            }
+            if (!record.get("loudness").equals("")) {
+                context.write(new Text("Q2"), new Text("a\t" + record.get("song_id") + "\t" + record.get("loudness")));
+            }
 
             if (!record.get("song_hotttnesss").equals("")) {
                 context.write(new Text("Q3"), new Text("a\t" + record.get("song_id") + "\t" + record.get("song_hotttnesss")));
             }
 
-//            if (!record.get("end_of_fade_in").equals("") && !record.get("duration").equals("") && !record.get("start_of_fade_out").equals("")) {
-//                context.write(new Text("Q4"), new Text("a\t" + record.get("song_id") + "\t" + record.get("end_of_fade_in") + "\t" + record.get("duration") + "\t" + record.get("start_of_fade_out")));
-//            }
+            if (!record.get("end_of_fade_in").equals("") && !record.get("duration").equals("") && !record.get("start_of_fade_out").equals("")) {
+                context.write(new Text("Q4"), new Text("a\t" + record.get("song_id") + "\t" + record.get("end_of_fade_in") + "\t" + record.get("duration") + "\t" + record.get("start_of_fade_out")));
+            }
 
             if (!record.get("duration").equals("")) {
                 context.write(new Text("Q5"), new Text("a\t" + record.get("song_id") + "\t" + record.get("duration")));
@@ -43,6 +43,7 @@ public class MapAnalysis extends Mapper<Object, Text, Text, Text> {
             if (!record.get("energy").equals("") && !record.get("danceability").equals("")) {
                 context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\t" + record.get("energy") + "\t" + record.get("danceability")));
             }
+
             /*
             for (String s : "Q2 Q3 Q4 Q5 Q6".split(" ")) {
                 context.write(new Text(s), new Text("analysis\t" + record.get(1) + "\t" + record.get(2) + "\t" +record.get(4)+ "\t" +
