@@ -26,7 +26,7 @@ public class AnalyzeSegmentsJob {
             job.setMapOutputValueClass(Text.class);
             job.setOutputKeyClass(Text.class);
             job.setOutputValueClass(Text.class);
-            FileInputFormat.addInputPath(job, new Path("/data/analysis"));
+            FileInputFormat.addInputPath(job, new Path("/home/data/analysis"));
             Date now = new Date();
             FileOutputFormat.setOutputPath(job, new Path("/home/output" + now.getTime()));
             System.exit(job.waitForCompletion(true) ? 0 : 1);

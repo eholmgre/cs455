@@ -36,24 +36,31 @@ public class ReduceSegments extends Reducer<Text, Text, Text, Text> {
 
 
     private void averageList(Iterable<Text> values, Context context, String field) throws IOException, InterruptedException{
-        double total = 0;
+        double []total = new double[661];
         long num = 0;
 
         for (Text val : values) {
-            String []enteries = val.toString().split(" ");
-            double curTotal = 0;
-            for (int i = 0; i < enteries.length; ++i) {
-                curTotal += Double.parseDouble(enteries[i]);
+            String[] enteries = val.toString().split(" ");
+            if (enteries.length < 661) {
+                continue;
             }
-
-            curTotal /= enteries.length;
-
-            total += curTotal;
+            for (int i = 0; i < 661; ++i) {
+                total[i] += Double.parseDouble(enteries[i]);
+            }
             ++num;
         }
 
-        total /= num;
+        for (int i = 0; i < total.length; ++i) {
+            total[i] = total[i] / num;
+        }
 
-        context.write(new Text("average " + field), new Text("" + total));
+        StringBuilder doubles = new StringBuilder();
+
+        for (double d :total) {
+            doubles.append(d);
+            doubles.append(' ');
+        }
+
+        context.write(new Text("average " + field), new Text(doubles.toString()));
     }
 }
