@@ -259,18 +259,15 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                     }
                 }
 
-                for (String song_id : Q5SongMap.keySet()) {
+                for (String song_id : Q5LengthMap.keySet()) {
                     Q5LengthList.add(new Pair<>(song_id, Q5LengthMap.get(song_id)));
                 }
 
-                //Comparator.comparing(Pair::getSecond);
-
-                Collections.sort(Q5LengthList, (Pair<String, Float> x,Pair<String, Float> y) -> x.getSecond().compareTo(y.getSecond()));
+                Q5LengthList.sort((Pair<String, Float> x,Pair<String, Float> y) -> x.getSecond().compareTo(y.getSecond()));
 
                 ArrayList<Pair<String, Float>> medians = new ArrayList<>();
 
                 int m = Q5LengthList.size() / 2;
-                context.write(new Text("medians length " + Q5LengthList.size()), new Text("median index " + m + " value " + Q5LengthList.get(m)));
                 int lower = m;
                 int upper = m;
 
@@ -299,14 +296,18 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                 break;
 
             case "Q6":
-                // context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\t" + record.get("energy") + "\t" + record.get("danceability")));
                 // context.write(new Text("Q6"), new Text("m\t" + record.get("song_id") + "\t" + record.get("title") + "\t" + record.get("artist_name")));
+                // context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\te\t" + record.get("energy")));
+                // context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\td\t" + record.get("danceability")));
                 for (Text val : values) {
                     try {
                         String []parts = val.toString().split("\t");
                         if (parts[0].equals("a")) {
-                            Q6EnergyMap.put(parts[1], Float.parseFloat(parts[2]));
-                            Q6DanceabilityMap.put(parts[1], Float.parseFloat(parts[3]));
+                            if (parts[2].equals("e")) {
+                                Q6EnergyMap.put(parts[1], Float.parseFloat(parts[3]));
+                            } else if (parts[2].equals("d")) {
+                                Q6DanceabilityMap.put(parts[1], Float.parseFloat(parts[3]));
+                            }
                         } else if (parts[0].equals("m")) {
                             Q6SongNameMap.put(parts[1], parts[2]);
                             Q6ArtistMap.put(parts[1], parts[3]);
@@ -350,16 +351,21 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
                     }
 
                 }
+
+                Collections.reverse(Q6EnergyList);
+
                 StringBuilder energyBuilder = new StringBuilder();
                 for (Pair<String, Float> energy : Q6EnergyList) {
-                    energyBuilder.append(Q6ArtistMap.get(energy.getFirst() + " - " + Q6SongNameMap.get(energy.getFirst()
-                            + " (" + energy.getSecond() + "), ")));
+                    energyBuilder.append(Q6ArtistMap.get(energy.getFirst()) + " - " + Q6SongNameMap.get(energy.getFirst())
+                            + " (" + energy.getSecond() + "), ");
                 }
+
+                Collections.reverse(Q6DanceabilityList);
 
                 StringBuilder danceBuilder = new StringBuilder();
                 for (Pair<String, Float> dance : Q6DanceabilityList) {
-                    energyBuilder.append(Q6ArtistMap.get(dance.getFirst() + " - " + Q6SongNameMap.get(dance.getFirst()
-                            + " (" + dance.getSecond() + "), ")));
+                    danceBuilder.append(Q6ArtistMap.get(dance.getFirst()) + " - " + Q6SongNameMap.get(dance.getFirst())
+                            + " (" + dance.getSecond() + "), ");
                 }
 
                 context.write(new Text("Top 10 songs w/ max energy"), new Text(energyBuilder.toString()));
@@ -369,10 +375,10 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
             case "Q8":
                 //context.write(new Text("Q8"), new Text("m\t" + record.get("artist_name") + "\t" + record.get("similar_artists")));
                 String mostUniqueArtist = "";
-                int mostUniqueSimilar = -1;
+                int mostUniqueSimilar = Integer.MAX_VALUE;
 
                 String leastUniqueArtist = "";
-                int leastUniqueSimilar = Integer.MAX_VALUE;
+                int leastUniqueSimilar = -1;
                 for (Text val : values) {
                     String []parts = val.toString().split("\t");
                     if (!Q8SimilarArtistsMap.keySet().contains(parts[1])) {

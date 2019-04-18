@@ -40,8 +40,12 @@ public class MapAnalysis extends Mapper<Object, Text, Text, Text> {
                 context.write(new Text("Q5"), new Text("a\t" + record.get("song_id") + "\t" + record.get("duration")));
             }
 
-            if (!record.get("energy").equals("") && !record.get("danceability").equals("")) {
-                context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\t" + record.get("energy") + "\t" + record.get("danceability")));
+            if (!record.get("energy").equals("") ) {
+                context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\te\t" + record.get("energy")));
+            }
+
+            if (!record.get("danceability").equals("")) {
+                context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\td\t" + record.get("danceability")));
             }
 
             /*
