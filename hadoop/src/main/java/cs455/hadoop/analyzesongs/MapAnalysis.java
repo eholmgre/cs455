@@ -48,14 +48,23 @@ public class MapAnalysis extends Mapper<Object, Text, Text, Text> {
                 context.write(new Text("Q6"), new Text("a\t" + record.get("song_id") + "\td\t" + record.get("danceability")));
             }
 
-            /*
-            for (String s : "Q2 Q3 Q4 Q5 Q6".split(" ")) {
-                context.write(new Text(s), new Text("analysis\t" + record.get(1) + "\t" + record.get(2) + "\t" +record.get(4)+ "\t" +
-                        record.get(5) + "\t" +  record.get(6) + "\t" +  record.get(7) + "\t" +  record.get(8) + "\t" +  record.get(10) + "\t" +
-                        record.get(11) + "\t" +  record.get(13) + "\t" +  record.get(14) + "\t" +  record.get(15) + "\t" +
-                        record.get(18) + "\t" +  record.get(20) + "\t" +  record.get(21) + "\t" +  record.get(22) + "\t" +  record.get(23) + "\t" +  record.get(24)));
+            if (!record.get("segments_start").equals("")) {
+                context.write(new Text("T7"), new Text("" + record.get("segments_start").split(" ").length));
             }
-            */
+
+
+            // DeMorgan up in here
+            if (!(record.get("song_hotttnesss").equals("") && record.get("danceability").equals("") && record.get("duration").equals("") && record.get("end_of_fade_in").equals("")
+                    && record.get("energy").equals("") &&  record.get("key").equals("") && record.get("loudness").equals("")
+                    && record.get("mode").equals("") && record.get("start_of_fade_out").equals("") && record.get("tempo").equals("")
+                    && record.get("time_signature").equals(""))) {
+
+                context.write(new Text("Q9"), new Text("a\t" + record.get("song_id") + "\t" + record.get("song_hotttnesss") + "\t" +record.get("danceability") + "\t" + record.get("duration")
+                        + "\t"+ record.get("end_of_fade_in") + "\t"+ record.get("energy") + "\t"+ record.get("key") + "\t"
+                        + record.get("loudness") + "\t"+ record.get("mode") + "\t"+ record.get("start_of_fade_out")
+                        + "\t"+ record.get("tempo") + "\t"+ record.get("time_signature") + "\t"));
+            }
+
         }
     }
 }

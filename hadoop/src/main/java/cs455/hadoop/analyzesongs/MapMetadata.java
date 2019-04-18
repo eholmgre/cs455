@@ -37,14 +37,12 @@ public class MapMetadata extends Mapper<Object, Text, Text, Text> {
 
             if (!record.get("similar_artists").equals("")) {
                 context.write(new Text("Q8"), new Text("m\t" + record.get("artist_name") + "\t" + record.get("similar_artists")));
+                context.write(new Text("Q10"), new Text(record.get("artist_name") + "\t" + record.get("artist_id") + "\t" +  record.get("similar_artists")));
             }
-            /*
-            for (String s : "Q1 Q2 Q3 Q4 Q5 Q6".split(" ")) {
-                context.write(new Text(s), new Text("metadata\t" + record.get(1) + "\t" + record.get(2) + "\t" + record.get(3) + "\t" +
-                        record.get(7) + "\t" + record.get(8) + "\t" + record.get(9) + "\t" + record.get(10) + "\t" + record.get(11) + "\t" +
-                        record.get(12) + "\t" + record.get(13) + "\t" + record.get(14)));
+
+            if (!record.get("artist_terms").equals("")) {
+                context.write(new Text("Q9"), new Text("m\t" + record.get("song_id") + "\t" + record.get("artist_name") + "\t" + record.get("title") + record.get("artist_terms")));
             }
-            */
         }
     }
 }
