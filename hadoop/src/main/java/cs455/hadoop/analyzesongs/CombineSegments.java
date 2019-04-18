@@ -1,9 +1,6 @@
 package cs455.hadoop.analyzesongs;
 
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.OutputCollector;
-import org.apache.hadoop.mapred.RawKeyValueIterator;
-import org.apache.hadoop.mapred.Task;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;

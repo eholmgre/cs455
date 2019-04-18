@@ -4,7 +4,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.util.Collections;
 
 public class ReduceSegments extends Reducer<Text, Text, Text, Text> {
 

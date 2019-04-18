@@ -44,7 +44,6 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
     private HashMap<String, String> Q9MetaMap;
     private HashMap<String, String> Q9AnyzMap;
 
-    private ArrayList<Integer> T7LengthList;
     private HashMap<Integer, Integer> T7ModeMap;
 
     @Override
@@ -74,7 +73,6 @@ public class AnalyzeSongsReducer extends Reducer<Text, Text, Text, Text> {
         Q9HotttnessMap = new HashMap<>();
         Q9MetaMap = new HashMap<>();
         Q9AnyzMap = new HashMap<>();
-        T7LengthList = new ArrayList<>();
         T7ModeMap = new HashMap<>();
     }
 
